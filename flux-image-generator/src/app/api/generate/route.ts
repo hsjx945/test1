@@ -9,11 +9,15 @@ export async function POST(request: NextRequest) {
   try {
     const { 
       prompt, 
-      negativePrompt, 
+      inputImage,
       aspectRatio = '1:1', 
-      quality = 95, 
-      styleStrength = 7, 
-      seed 
+      guidance = 2.5,
+      numInferenceSteps = 28,
+      outputQuality = 80,
+      outputFormat = 'webp',
+      goFast = true,
+      seed,
+      useKontext = false
     } = await request.json();
 
     if (!prompt || typeof prompt !== 'string') {
@@ -37,35 +41,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Map aspect ratio to Flux format
+    // Map aspect ratio to Flux Kontext format
     const aspectRatioMap: { [key: string]: string } = {
       '1:1': '1:1',
       '16:9': '16:9', 
       '9:16': '9:16',
       '4:3': '4:3',
-      '3:4': '3:4'
+      '3:4': '3:4',
+      '21:9': '21:9',
+      '2:3': '2:3',
+      '3:2': '3:2'
     };
 
-    const input = {
+    const input: Record<string, unknown> = {
       prompt: prompt,
-      aspect_ratio: aspectRatioMap[aspectRatio] || "1:1",
-      num_outputs: 1,
-      guidance: styleStrength,
-      num_inference_steps: quality >= 95 ? 50 : quality >= 85 ? 35 : 28,
-      megapixels: "1",
-      output_format: "png",
-      output_quality: quality,
-      go_fast: quality < 85,
-      ...(seed && { seed: seed }),
-      ...(negativePrompt && { disable_safety_checker: false })
+      aspect_ratio: inputImage ? "match_input_image" : (aspectRatioMap[aspectRatio] || "1:1"),
+      guidance: parseFloat(guidance.toString()),
+      num_inference_steps: parseInt(numInferenceSteps.toString()),
+      output_format: outputFormat,
+      output_quality: parseInt(outputQuality.toString()),
+      go_fast: Boolean(goFast),
+      ...(seed && { seed: parseInt(seed.toString()) })
     };
+
+    // 如果有输入图像，添加到参数中（确保使用正确的参数名称）
+    if (inputImage) {
+      // Flux Kontext Dev 需要 input_image 参数
+      input.input_image = inputImage;
+      console.log('Added input_image to parameters, type:', typeof inputImage);
+      console.log('Input image data length:', inputImage.length);
+    }
 
     console.log('Making request to Replicate with input:', input);
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-dev",
-      { input }
-    );
+    // 统一使用 flux-kontext-dev 模型，支持有无图像的两种情况
+    const modelName = "black-forest-labs/flux-kontext-dev";
+
+    console.log('Using model:', modelName);
+    console.log('Has input image:', !!inputImage);
+    console.log('Use Kontext flag:', useKontext);
+    console.log('Final input params:', {
+      ...input,
+      input_image: inputImage ? '[base64 data]' : 'none'
+    });
+
+    const output = await replicate.run(modelName, { input });
 
     console.log('Replicate response:', output);
     console.log('Response type:', typeof output);
@@ -141,6 +161,43 @@ export async function POST(request: NextRequest) {
       }
     } else if (typeof output === 'string') {
       imageUrl = output;
+    } else if (output instanceof ReadableStream) {
+      // 处理直接返回 ReadableStream 的情况
+      console.log('Detected direct ReadableStream, converting...');
+      
+      try {
+        const reader = output.getReader();
+        const chunks = [];
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        
+        // 合并所有 chunks
+        const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+        const result = new Uint8Array(totalLength);
+        let offset = 0;
+        
+        for (const chunk of chunks) {
+          result.set(chunk, offset);
+          offset += chunk.length;
+        }
+        
+        // 转换为 base64
+        const base64 = Buffer.from(result).toString('base64');
+        imageUrl = `data:image/png;base64,${base64}`;
+        
+        console.log('Successfully converted direct stream to base64, length:', base64.length);
+        
+      } catch (streamError) {
+        console.error('Direct stream processing error:', streamError);
+        return NextResponse.json(
+          { success: false, error: '图像数据处理失败' },
+          { status: 500 }
+        );
+      }
     } else if (output && typeof output === 'object' && 'url' in output) {
       imageUrl = (output as { url: string }).url;
     } else {
