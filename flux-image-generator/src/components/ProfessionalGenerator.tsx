@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, Wand, Settings, X } from 'lucide-react';
+import { Upload, Wand, Settings, X, Eye } from 'lucide-react';
+import ImagePreviewModal from '@/components/ImagePreviewModal';
+import { PrimaryButtonFeedback } from '@/components/ButtonFeedback';
 
 // SVG图标组件
 const IconComponent = ({ path, className = "w-4 h-4" }: { path: string; className?: string }) => (
@@ -104,6 +105,7 @@ export default function ProfessionalGenerator({
   const [isUploading, setIsUploading] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [buttonClicked, setButtonClicked] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ src: string; name: string } | null>(null);
 
   // 当生成完成时重置按钮状态
   React.useEffect(() => {
@@ -202,7 +204,7 @@ export default function ProfessionalGenerator({
       const { PromptEnhancer } = await import('@/lib/prompts');
       const randomPrompt = PromptEnhancer.getRandomPrompt();
       setPrompt(randomPrompt);
-    } catch (error) {
+    } catch {
       // 如果导入失败，使用备用提示词
       const backupPrompts = [
         "优雅的芭蕾舞者在舞台上翩翩起舞",
@@ -349,13 +351,26 @@ export default function ProfessionalGenerator({
               ) : uploadedImages.length > 0 ? (
                 <div className="w-full h-full overflow-hidden">
                   {uploadedImages.length === 1 ? (
-                    <div className="relative w-full h-full">
+                    <div className="relative w-full h-full group">
                       <Image
                         src={uploadedImages[0].preview}
                         alt="参考图像"
                         fill
-                        className="object-cover rounded-xl"
+                        className="object-cover rounded-xl cursor-pointer transition-transform group-hover:scale-105"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImage({
+                            src: uploadedImages[0].preview,
+                            name: uploadedImages[0].name
+                          });
+                        }}
                       />
+                      
+                      {/* 预览图标覆盖层 */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                        <Eye className="w-8 h-8 text-white drop-shadow-lg" />
+                      </div>
+                      
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -369,13 +384,26 @@ export default function ProfessionalGenerator({
                   ) : (
                     <div className="grid grid-cols-2 gap-2 w-full h-full p-2">
                       {uploadedImages.slice(0, 4).map((img, index) => (
-                        <div key={img.id} className="relative aspect-square">
+                        <div key={img.id} className="relative aspect-square group">
                           <Image
                             src={img.preview}
                             alt={`参考图像 ${index + 1}`}
                             fill
-                            className="object-cover rounded-lg"
+                            className="object-cover rounded-lg cursor-pointer transition-transform group-hover:scale-105"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewImage({
+                                src: img.preview,
+                                name: img.name
+                              });
+                            }}
                           />
+                          
+                          {/* 预览图标覆盖层 */}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                            <Eye className="w-5 h-5 text-white drop-shadow-lg" />
+                          </div>
+                          
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -406,8 +434,8 @@ export default function ProfessionalGenerator({
           </div>
         </div>
 
-        {/* 功能控制行 - 所有设置在一行，高级透明背景 */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 p-6 bg-gradient-to-br from-amber-900/10 via-amber-800/8 to-amber-700/10 backdrop-blur-[20px] border border-amber-400/20 rounded-2xl shadow-[inset_0_1px_0_0_rgba(251,191,36,0.1)] shadow-amber-500/5">
+        {/* 功能控制行 - 响应式网格布局，高级透明背景 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 sm:gap-3 p-6 bg-gradient-to-br from-amber-900/10 via-amber-800/8 to-amber-700/10 backdrop-blur-[20px] border border-amber-400/20 rounded-2xl shadow-[inset_0_1px_0_0_rgba(251,191,36,0.1)] shadow-amber-500/5">
           {/* 艺术风格 */}
           <div>
             <label className="block text-amber-200 text-sm font-medium mb-2">艺术风格</label>
@@ -519,8 +547,14 @@ export default function ProfessionalGenerator({
               max="4"
               value={numImages}
               onChange={(e) => setNumImages(Number(e.target.value))}
-              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer mt-2 slider-modern-blue"
+              className="w-full h-3 sm:h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer mt-2 slider-modern-blue touch-manipulation"
             />
+            {/* 数量指示点 */}
+            <div className="flex justify-between text-xs text-amber-300/60 mt-1">
+              {[1, 2, 3, 4].map(num => (
+                <span key={num} className={num === numImages ? 'text-amber-400 font-medium' : ''}>{num}</span>
+              ))}
+            </div>
           </div>
 
           {/* 高级设置按钮 */}
@@ -553,7 +587,7 @@ export default function ProfessionalGenerator({
               transition={{ duration: 0.3 }}
               className="overflow-hidden bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-4"
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-4">
                 {/* 引导强度 */}
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">
@@ -566,7 +600,7 @@ export default function ProfessionalGenerator({
                     step="0.5"
                     value={guidance}
                     onChange={(e) => setGuidance(Number(e.target.value))}
-                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-modern-purple"
+                    className="w-full h-3 sm:h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-modern-purple touch-manipulation"
                   />
                   <div className="flex justify-between text-xs text-zinc-400 mt-1">
                     <span>弱</span>
@@ -586,7 +620,7 @@ export default function ProfessionalGenerator({
                     step="5"
                     value={steps}
                     onChange={(e) => setSteps(Number(e.target.value))}
-                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-modern-green"
+                    className="w-full h-3 sm:h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-modern-green touch-manipulation"
                   />
                   <div className="flex justify-between text-xs text-zinc-400 mt-1">
                     <span>快速</span>
@@ -606,7 +640,7 @@ export default function ProfessionalGenerator({
                     step="5"
                     value={quality}
                     onChange={(e) => setQuality(Number(e.target.value))}
-                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-amber"
+                    className="w-full h-3 sm:h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider-amber touch-manipulation"
                   />
                   <div className="flex justify-between text-xs text-zinc-400 mt-1">
                     <span>标准</span>
@@ -678,10 +712,11 @@ export default function ProfessionalGenerator({
             )}
           </AnimatePresence>
           
-          <Button
+          <PrimaryButtonFeedback
             onClick={handleSubmit}
             disabled={disabled || isGenerating || buttonClicked || !prompt.trim()}
-            className="w-full max-w-md h-20 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 hover:from-purple-700 hover:via-blue-700 hover:to-purple-700 text-white font-bold text-2xl disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl transition-all duration-500 hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/50 relative overflow-hidden group"
+            loading={isGenerating}
+            className="w-full max-w-md h-20 text-2xl font-bold rounded-2xl shadow-2xl bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 hover:from-purple-700 hover:via-blue-700 hover:to-purple-700"
           >
             {/* 强化的魔法效果背景 */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-out" />
@@ -765,7 +800,7 @@ export default function ProfessionalGenerator({
                 </>
               )}
             </div>
-          </Button>
+          </PrimaryButtonFeedback>
         </div>
         
 
@@ -788,6 +823,15 @@ export default function ProfessionalGenerator({
             </p>
           </motion.div>
         )}
+
+      {/* 图片预览模态框 */}
+      <ImagePreviewModal
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        imageSrc={previewImage?.src || ''}
+        imageName={previewImage?.name || ''}
+        imageAlt="参考图像预览"
+      />
     </motion.div>
   );
 }

@@ -8,6 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import KontextShowcase from '@/components/KontextShowcase';
 import PricingSection from '@/components/PricingSection';
 import ProfessionalGenerator from '@/components/ProfessionalGenerator';
+import { ImageGenerationSkeleton, GallerySkeleton } from '@/components/SkeletonLoader';
+import { useErrorHandler } from '@/components/ErrorNotification';
+import { IconButtonFeedback } from '@/components/ButtonFeedback';
 import { 
   Download, 
   Copy,
@@ -19,10 +22,10 @@ import {
   Twitter,
   Github,
   Cpu,
-  Camera,
   Trash2,
   RotateCcw,
-  Palette
+  Palette,
+  Menu
 } from 'lucide-react';
 
 const STYLE_PRESETS = [
@@ -126,17 +129,29 @@ export default function AtelierAI() {
   const [currentGeneratedPrompt, setCurrentGeneratedPrompt] = useState(''); // 存储当前生成的提示词
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [usageToday, setUsageToday] = useState(0);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // 新增：图像上传相关状态
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [selectedUploadedImage, setSelectedUploadedImage] = useState<string | null>(null);
-  const [useKontext, setUseKontext] = useState(false);
+  // const [useKontext, setUseKontext] = useState(false);
   
   // 图像编辑相关状态
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  
+  // 错误处理
+  const {
+    showNetworkError,
+    showApiError,
+    showQuotaError,
+    showUserError,
+    // showTimeoutError,
+    ErrorNotificationComponent
+  } = useErrorHandler();
   const [imageEditState, setImageEditState] = useState<ImageEditState>({
     rotation: 0,
     brightness: 100,
@@ -163,6 +178,11 @@ export default function AtelierAI() {
         console.error('Failed to parse history:', error);
       }
     }
+    
+    // 模拟加载时间，然后设置加载完成
+    setTimeout(() => {
+      setIsHistoryLoading(false);
+    }, 800);
   }, []);
 
   // 简单的中英词典（本地翻译备用）
@@ -454,68 +474,82 @@ export default function AtelierAI() {
   };
 
   // 使用指定prompt生成图像（解决状态更新延迟问题）
-  const handleGenerateWithPrompt = async (inputPrompt: string) => {
-    try {
-      let finalPrompt = inputPrompt.trim();
-      if (!finalPrompt) {
-        alert('请输入创作描述');
-        return;
-      }
+  // const handleGenerateWithPrompt = async (inputPrompt: string) => {
+  //   try {
+  //     let finalPrompt = inputPrompt.trim();
+  //     if (!finalPrompt) {
+  //       alert('请输入创作描述');
+  //       return;
+  //     }
 
-      // 检测是否为中文并翻译
-      const isChineseText = /[\u4e00-\u9fff]/.test(finalPrompt);
-      if (isChineseText) {
-        try {
-          const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: finalPrompt }),
-          });
+  //     // 检测是否为中文并翻译
+  //     const isChineseText = /[\u4e00-\u9fff]/.test(finalPrompt);
+  //     if (isChineseText) {
+  //       try {
+  //         const response = await fetch('/api/translate', {
+  //           method: 'POST',
+  //           headers: { 'Content-Type': 'application/json' },
+  //           body: JSON.stringify({ text: finalPrompt }),
+  //         });
           
-          if (response.ok) {
-            const data = await response.json();
-            if (data.translatedText) {
-              finalPrompt = data.translatedText;
-            }
+  //         if (response.ok) {
+  //           const data = await response.json();
+  //           if (data.translatedText) {
+  //             finalPrompt = data.translatedText;
+  //           }
           }
         } catch (error) {
           console.error('Translation failed:', error);
           // 继续使用原始prompt
-        }
-      }
+  //       }
+  //     }
 
-      return await executeGeneration(finalPrompt, inputPrompt);
-    } catch (error) {
-      console.error('Generation error:', error);
-      alert('生成失败，请重试');
-      setIsGenerating(false);
-      setProgress(0);
-    }
-  };
+  //     return await executeGeneration(finalPrompt, inputPrompt);
+  //   } catch (error) {
+  //     console.error('Generation error:', error);
+  //     if (error instanceof Error && error.message.includes('网络')) {
+  //       showNetworkError();
+  //     } else {
+  //       showApiError('生成失败，请重试', {
+  //         label: '重新生成',
+  //         handler: () => handleGenerateFromData(generationData)
+  //       });
+  //     }
+  //     setIsGenerating(false);
+  //     setProgress(0);
+  //   }
+  // };
 
   // 生成图像
   const handleGenerate = async () => {
     try {
       const finalPrompt = await buildPrompt();
       if (!finalPrompt.trim()) {
-        alert('请输入创作描述');
+        showUserError('请输入创作描述', '描述您想要生成的图像内容，例如："一个美丽的风景"');
         return;
       }
 
       return await executeGeneration(finalPrompt, prompt);
     } catch (error) {
       console.error('Generation error:', error);
-      alert('生成失败，请重试');
+      if (error instanceof Error && error.message.includes('网络')) {
+        showNetworkError();
+      } else {
+        showApiError('图像生成失败，请稍后重试', {
+          label: '重新生成',
+          handler: () => handleGenerate()
+        });
+      }
       setIsGenerating(false);
       setProgress(0);
     }
   };
 
   // 执行具体的生成逻辑（带数据参数版本）
-  const executeGenerationWithData = async (finalPrompt: string, originalPrompt: string, generationData?: any) => {
+  const executeGenerationWithData = async (finalPrompt: string, originalPrompt: string, generationData?: Record<string, unknown>) => {
     try {
       if (usageToday >= MAX_DAILY_USAGE) {
-        alert(`今日剩余次数不足，剩余 ${MAX_DAILY_USAGE - usageToday} 次`);
+        showQuotaError(`今日剩余次数不足，剩余 ${MAX_DAILY_USAGE - usageToday} 次`);
         return;
       }
 
@@ -613,8 +647,17 @@ export default function AtelierAI() {
         
     } catch (error) {
       console.error('Generation error:', error);
-      const errorMessage = error instanceof Error ? error.message : '生成失败，请重试';
-      alert(errorMessage);
+      if (error instanceof Error && error.message.includes('网络')) {
+        showNetworkError();
+      } else if (error instanceof Error && error.message.includes('quota')) {
+        showQuotaError();
+      } else {
+        const errorMessage = error instanceof Error ? error.message : '生成失败，请重试';
+        showApiError(errorMessage, {
+          label: '重新生成',
+          handler: () => executeGenerationWithData(finalPrompt, originalPrompt, generationData)
+        });
+      }
     } finally {
       setTimeout(() => setIsGenerating(false), 500);
       setProgress(0);
@@ -654,23 +697,23 @@ export default function AtelierAI() {
     }
   };
 
-  const copyImageToClipboard = async (imageUrl: string) => {
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          [blob.type]: blob
-        })
-      ]);
-      setCopyStatus('图片已复制');
-      setTimeout(() => setCopyStatus(null), 2000);
-    } catch (error) {
-      console.error('Copy image failed:', error);
-      setCopyStatus('图片复制失败');
-      setTimeout(() => setCopyStatus(null), 2000);
-    }
-  };
+  // const copyImageToClipboard = async (imageUrl: string) => {
+  //   try {
+  //     const response = await fetch(imageUrl);
+  //     const blob = await response.blob();
+  //     await navigator.clipboard.write([
+  //       new ClipboardItem({
+  //         [blob.type]: blob
+  //       })
+  //     ]);
+  //     setCopyStatus('图片已复制');
+  //     setTimeout(() => setCopyStatus(null), 2000);
+  //   } catch (error) {
+  //     console.error('Copy image failed:', error);
+  //     setCopyStatus('图片复制失败');
+  //     setTimeout(() => setCopyStatus(null), 2000);
+  //   }
+  // };
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
@@ -722,14 +765,16 @@ export default function AtelierAI() {
               </a>
             </nav>
 
-            {/* 使用计数器 */}
+            {/* 右侧控件区 */}
             <div className="flex items-center space-x-4">
-              <div className="atelier-panel px-4 py-2">
+              {/* 使用计数器 - 桌面端显示 */}
+              <div className="hidden sm:block atelier-panel px-4 py-2">
                 <span className="text-sm text-amber-200">
                   今日剩余: <span className="text-amber-400 font-bold">{MAX_DAILY_USAGE - usageToday}</span>
                 </span>
               </div>
               
+              {/* 主题切换按钮 */}
               <Button
                 onClick={toggleTheme}
                 variant="ghost"
@@ -738,8 +783,73 @@ export default function AtelierAI() {
               >
                 {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </Button>
+
+              {/* 移动端汉堡菜单按钮 */}
+              <Button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                variant="ghost"
+                size="icon"
+                className="md:hidden text-amber-200 hover:text-amber-100 hover:bg-amber-500/10"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
             </div>
           </div>
+
+          {/* 移动端菜单 */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="md:hidden bg-black/95 backdrop-blur-xl border-t border-amber-500/20"
+              >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                  <nav className="flex flex-col space-y-4">
+                    <a 
+                      href="#create" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
+                    >
+                      创作工作室
+                    </a>
+                    <a 
+                      href="#gallery" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
+                    >
+                      作品画廊
+                    </a>
+                    <a 
+                      href="#kontext-showcase" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
+                    >
+                      技术展示
+                    </a>
+                    <a 
+                      href="#pricing" 
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
+                    >
+                      会员计划
+                    </a>
+                    
+                    {/* 移动端使用计数器 */}
+                    <div className="pt-4 border-t border-amber-500/20">
+                      <div className="atelier-panel px-4 py-3 text-center">
+                        <span className="text-sm text-amber-200">
+                          今日剩余: <span className="text-amber-400 font-bold">{MAX_DAILY_USAGE - usageToday}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </nav>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.header>
 
@@ -773,22 +883,41 @@ export default function AtelierAI() {
             />
           </div>
 
-          {/* 生成进度显示 */}
+          {/* 生成进度显示 - 骨架屏 */}
           {isGenerating && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-8 max-w-md mx-auto text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-12"
             >
-              <div className="progress-atelier">
-                <div 
-                  className="progress-gold"
-                  style={{ width: `${progress}%` }}
-                ></div>
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <motion.div className="atelier-card p-8">
+                  <div className="text-center mb-8">
+                    <h2 className="renaissance-title text-3xl mb-4">
+                      正在创作您的艺术杰作
+                    </h2>
+                    <p className="text-amber-200/80 mb-4">
+                      AI正在将您的想象转化为独特的视觉艺术
+                    </p>
+                    
+                    {/* 精美的进度条 */}
+                    <div className="max-w-md mx-auto mb-6">
+                      <div className="progress-atelier">
+                        <div 
+                          className="progress-gold"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-amber-300 mt-2 text-lg font-medium">
+                        创作进度: {progress}%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* 图片生成骨架屏 */}
+                  <ImageGenerationSkeleton numImages={numImages} />
+                </motion.div>
               </div>
-              <p className="text-amber-300 mt-4 text-xl font-medium">
-                艺术创作中... {progress}%
-              </p>
             </motion.div>
           )}
 
@@ -864,26 +993,26 @@ export default function AtelierAI() {
                         initial={{ opacity: 0 }}
                         whileHover={{ opacity: 1 }}
                       >
-                        <Button
-                          size="icon"
+                        <IconButtonFeedback
+                          icon={<Download className="w-5 h-5" />}
+                          tooltip="下载图片"
                           onClick={(e) => {
                             e.stopPropagation();
                             downloadImage(imageUrl);
                           }}
-                          className="gold-glow text-black hover:scale-110 transition-transform"
-                        >
-                          <Download className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          size="icon"
+                          className="gold-glow text-black"
+                          variant="default"
+                        />
+                        <IconButtonFeedback
+                          icon={<Copy className="w-5 h-5" />}
+                          tooltip="复制图片"
                           onClick={(e) => {
                             e.stopPropagation();
                             copyToClipboard(imageUrl);
                           }}
-                          className="gold-glow text-black hover:scale-110 transition-transform"
-                        >
-                          <Copy className="w-5 h-5" />
-                        </Button>
+                          className="gold-glow text-black"
+                          variant="default"
+                        />
                       </motion.div>
                       
                       {/* 图片下方的提示词和操作按钮 */}
@@ -926,26 +1055,32 @@ export default function AtelierAI() {
 
       {/* 作品画廊 */}
       <AnimatePresence>
-        {history.length > 0 && (
+        {(history.length > 0 || isHistoryLoading) && (
           <motion.section id="gallery" className="py-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <motion.div className="atelier-card p-8">
                 <div className="flex justify-between items-center mb-8">
                   <div>
                     <h2 className="renaissance-title text-3xl mb-4">创作画廊</h2>
-                    <p className="text-amber-200/80">您的艺术创作历程</p>
+                    <p className="text-amber-200/80">
+                      {isHistoryLoading ? '正在加载您的作品...' : '您的艺术创作历程'}
+                    </p>
                   </div>
-                  <Button
-                    onClick={clearHistory}
-                    variant="outline"
-                    className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    清空画廊
-                  </Button>
+                  {!isHistoryLoading && history.length > 0 && (
+                    <IconButtonFeedback
+                      icon={<><Trash2 className="w-4 h-4 mr-2" />清空画廊</>}
+                      tooltip="清空所有作品"
+                      onClick={clearHistory}
+                      className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10 px-4 py-2 rounded-lg border"
+                      variant="ghost"
+                    />
+                  )}
                 </div>
                 
-                <div className="gallery-atelier">
+                {isHistoryLoading ? (
+                  <GallerySkeleton count={8} />
+                ) : (
+                  <div className="gallery-atelier">
                   {history.slice(0, 12).map((item, index) => (
                     <motion.div 
                       key={item.id}
@@ -1000,7 +1135,8 @@ export default function AtelierAI() {
                       </div>
                     </motion.div>
                   ))}
-                </div>
+                  </div>
+                )}
               </motion.div>
             </div>
           </motion.section>
