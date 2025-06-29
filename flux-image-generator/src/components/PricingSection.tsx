@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Heart, Zap, Settings } from 'lucide-react';
+import { Zap, Settings } from 'lucide-react';
 
 interface PricingPlan {
   name: string;
@@ -25,13 +25,13 @@ const defaultPlans: PricingPlan[] = [
     price: '免费',
     description: '体验AI艺术创作',
     features: [
-      '每日10次创作额度',
+      '每日1次创作额度',
       '基础艺术风格',
       '标准画质输出',
       '作品画廊保存'
     ],
     buttonText: '当前计划',
-    buttonClass: 'bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30'
+    buttonClass: 'w-full h-12 bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30 rounded-lg font-semibold transition-all duration-300'
   },
   {
     name: '艺术家版',
@@ -46,7 +46,7 @@ const defaultPlans: PricingPlan[] = [
       '商用授权'
     ],
     buttonText: '升级至专业版',
-    buttonClass: 'maestro-button text-base py-4',
+    buttonClass: 'w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg font-semibold transition-all duration-300',
     popular: true
   },
   {
@@ -61,7 +61,7 @@ const defaultPlans: PricingPlan[] = [
       '专属技术支持'
     ],
     buttonText: '联系销售',
-    buttonClass: 'bg-purple-500/20 text-purple-200 border border-purple-500/30 hover:bg-purple-500/30'
+    buttonClass: 'w-full h-12 bg-purple-500/20 text-purple-200 border border-purple-500/30 hover:bg-purple-500/30 rounded-lg font-semibold transition-all duration-300'
   }
 ];
 
@@ -93,21 +93,26 @@ export default function PricingSection({
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.1 }}
-              className={`atelier-card p-8 text-center relative ${
+              className={`atelier-card p-8 text-center relative flex flex-col ${
                 plan.popular ? 'border-2 border-amber-500/50' : ''
               }`}
+              style={{ 
+                minHeight: '500px',
+                paddingTop: plan.popular ? '3rem' : '2rem', // 为推荐标签留出更多空间
+                marginTop: plan.popular ? '1rem' : '0' // 为推荐标签留出顶部空间
+              }}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-black px-4 py-1 rounded-full text-sm font-bold">
-                    推荐
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-[100]">
+                  <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-black px-6 py-2 rounded-full text-sm font-bold shadow-xl border-2 border-amber-300 relative z-[100]">
+                    ⭐ 推荐 ⭐
                   </span>
                 </div>
               )}
               
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-amber-100 mb-2">{plan.name}</h3>
-                <div className="text-4xl font-bold text-amber-400 mb-2">
+                <h3 className="text-2xl font-bold text-amber-100 mb-3">{plan.name}</h3>
+                <div className="text-4xl font-bold text-amber-400 mb-3">
                   {plan.price.includes('¥') ? (
                     <>
                       {plan.price.split('/')[0]}
@@ -117,20 +122,20 @@ export default function PricingSection({
                     plan.price
                   )}
                 </div>
-                <p className="text-amber-200/70">{plan.description}</p>
+                <p className="text-amber-200/70 text-sm">{plan.description}</p>
               </div>
               
-              <ul className="space-y-3 mb-8 text-left">
+              <ul className="space-y-3 mb-8 text-left flex-grow">
                 {plan.features.map((feature, featureIndex) => (
-                  <li key={featureIndex} className="flex items-center">
-                    <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                    <span className="text-amber-200/80">{feature}</span>
+                  <li key={featureIndex} className="flex items-start">
+                    <div className="w-2 h-2 bg-amber-400 rounded-full mr-3 mt-2 flex-shrink-0"></div>
+                    <span className="text-amber-200/80 text-sm leading-relaxed">{feature}</span>
                   </li>
                 ))}
               </ul>
               
               <Button 
-                className={`w-full ${plan.buttonClass}`}
+                className={plan.buttonClass}
                 onClick={() => onPlanSelect?.(plan.name)}
               >
                 {plan.buttonText}
@@ -147,10 +152,6 @@ export default function PricingSection({
           className="text-center mt-16"
         >
           <div className="flex flex-wrap justify-center gap-8 text-sm text-amber-200/70">
-            <div className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-amber-400" />
-              <span>7天无理由退款</span>
-            </div>
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-400" />
               <span>即时生效</span>

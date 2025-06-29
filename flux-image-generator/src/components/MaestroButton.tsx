@@ -43,8 +43,16 @@ export default function MaestroButton({
     onClick();
   };
 
-  // 魔法粒子生成器
+  // 魔法粒子生成器 - 使用确定性动画避免hydration问题
   const generateParticles = (count: number) => {
+    const positions = [
+      { x: -80, y: -60 }, { x: 80, y: -60 }, { x: -100, y: 0 }, { x: 100, y: 0 },
+      { x: -60, y: 80 }, { x: 60, y: 80 }, { x: -40, y: -100 }, { x: 40, y: -100 },
+      { x: -120, y: -40 }, { x: 120, y: -40 }, { x: -80, y: 100 }, { x: 80, y: 100 }
+    ];
+    const rotations = [0, 45, 90, 135, 180, 225, 270, 315, 30, 60, 120, 150];
+    const delays = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.15, 0.25, 0.35, 0.45, 0.05, 0.55];
+    
     return Array.from({ length: count }, (_, i) => (
       <motion.div
         key={i}
@@ -58,13 +66,13 @@ export default function MaestroButton({
         animate={{ 
           opacity: [0, 1, 0],
           scale: [0, 1, 0],
-          x: Math.random() * 200 - 100,
-          y: Math.random() * 200 - 100,
-          rotate: Math.random() * 360
+          x: positions[i % positions.length].x,
+          y: positions[i % positions.length].y,
+          rotate: rotations[i % rotations.length]
         }}
         transition={{
           duration: 1.5,
-          delay: Math.random() * 0.5,
+          delay: delays[i % delays.length],
           ease: "easeOut"
         }}
         className="absolute pointer-events-none"
@@ -73,7 +81,7 @@ export default function MaestroButton({
           top: '50%',
         }}
       >
-        {Math.random() > 0.5 ? (
+        {i % 2 === 0 ? (
           <Sparkles className="w-3 h-3 text-amber-300" />
         ) : (
           <Star className="w-2 h-2 text-amber-400" />

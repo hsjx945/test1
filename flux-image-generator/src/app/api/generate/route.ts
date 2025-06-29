@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
       outputFormat = 'webp',
       goFast = true,
       seed,
-      useKontext = false
+      useKontext = false,
+      numOutputs = 1
     } = await request.json();
 
     if (!prompt || typeof prompt !== 'string') {
@@ -53,29 +54,40 @@ export async function POST(request: NextRequest) {
       '3:2': '3:2'
     };
 
+    // 构建基础输入参数
     const input: Record<string, unknown> = {
       prompt: prompt,
-      aspect_ratio: inputImage ? "match_input_image" : (aspectRatioMap[aspectRatio] || "1:1"),
-      guidance: parseFloat(guidance.toString()),
-      num_inference_steps: parseInt(numInferenceSteps.toString()),
       output_format: outputFormat,
       output_quality: parseInt(outputQuality.toString()),
-      go_fast: Boolean(goFast),
       ...(seed && { seed: parseInt(seed.toString()) })
     };
 
-    // 如果有输入图像，添加到参数中（确保使用正确的参数名称）
+    // 验证numOutputs参数（1-4张图片）
+    const validNumOutputs = Math.min(Math.max(parseInt(numOutputs.toString()) || 1, 1), 4);
+    
+    // 如果有输入图像，使用 Kontext 模型（只支持单张输出）
     if (inputImage) {
-      // Flux Kontext Dev 需要 input_image 参数
       input.input_image = inputImage;
-      console.log('Added input_image to parameters, type:', typeof inputImage);
-      console.log('Input image data length:', inputImage.length);
+      input.aspect_ratio = "match_input_image";
+      input.guidance = parseFloat(guidance.toString());
+      input.num_inference_steps = parseInt(numInferenceSteps.toString());
+      // Kontext 模型只支持单张图片生成，忽略numOutputs参数
+      input.num_outputs = 1;
+      console.log('Using Kontext mode with input image, forced to 1 output');
+    } else {
+      // 使用基础 Flux 模型的参数（支持多张图片生成）
+      input.aspect_ratio = aspectRatioMap[aspectRatio] || "1:1";
+      input.guidance = parseFloat(guidance.toString());
+      input.num_inference_steps = parseInt(numInferenceSteps.toString());
+      input.go_fast = Boolean(goFast);
+      input.num_outputs = validNumOutputs;
+      console.log('Using standard Flux mode, num_outputs:', validNumOutputs);
     }
 
     console.log('Making request to Replicate with input:', input);
 
-    // 统一使用 flux-kontext-dev 模型，支持有无图像的两种情况
-    const modelName = "black-forest-labs/flux-kontext-dev";
+    // 根据是否有输入图像选择合适的模型
+    const modelName = inputImage ? "black-forest-labs/flux-kontext-dev" : "black-forest-labs/flux-dev";
 
     console.log('Using model:', modelName);
     console.log('Has input image:', !!inputImage);
@@ -100,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 处理不同的返回格式
-    let imageUrl;
+    let imageUrls = [];
     
     if (Array.isArray(output)) {
       // 检查第一个元素是否是 ReadableStream
@@ -139,7 +151,8 @@ export async function POST(request: NextRequest) {
           
           // 转换为 base64
           const base64 = Buffer.from(result).toString('base64');
-          imageUrl = `data:image/png;base64,${base64}`;
+          const imageUrl = `data:image/png;base64,${base64}`;
+          imageUrls = [imageUrl];
           
           console.log('Successfully converted stream to base64, length:', base64.length);
           
@@ -151,7 +164,8 @@ export async function POST(request: NextRequest) {
           );
         }
       } else if (typeof firstItem === 'string') {
-        imageUrl = firstItem;
+        // 处理多张图片URL数组
+        imageUrls = output.filter(url => typeof url === 'string');
       } else {
         console.error('Unexpected first item:', firstItem);
         return NextResponse.json(
@@ -160,7 +174,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (typeof output === 'string') {
-      imageUrl = output;
+      imageUrls = [output];
     } else if (output instanceof ReadableStream) {
       // 处理直接返回 ReadableStream 的情况
       console.log('Detected direct ReadableStream, converting...');
@@ -187,7 +201,7 @@ export async function POST(request: NextRequest) {
         
         // 转换为 base64
         const base64 = Buffer.from(result).toString('base64');
-        imageUrl = `data:image/png;base64,${base64}`;
+        imageUrls = [`data:image/png;base64,${base64}`];
         
         console.log('Successfully converted direct stream to base64, length:', base64.length);
         
@@ -199,7 +213,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (output && typeof output === 'object' && 'url' in output) {
-      imageUrl = (output as { url: string }).url;
+      imageUrls = [(output as { url: string }).url];
     } else {
       console.error('Unexpected output format:', {
         type: typeof output,
@@ -212,8 +226,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!imageUrl || typeof imageUrl !== 'string') {
-      console.error('Invalid image URL:', imageUrl);
+    if (!imageUrls || imageUrls.length === 0) {
+      console.error('Invalid image URLs:', imageUrls);
       return NextResponse.json(
         { success: false, error: '图像生成失败，未获取到有效URL' },
         { status: 500 }
@@ -222,7 +236,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      imageUrl: imageUrl
+      imageUrls: imageUrls,
+      // 为了向后兼容，保留imageUrl字段
+      imageUrl: imageUrls[0]
     });
 
   } catch (error) {

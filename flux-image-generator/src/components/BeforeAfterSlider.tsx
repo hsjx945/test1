@@ -33,20 +33,30 @@ export default function BeforeAfterSlider({
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    setSliderPosition(percentage);
+    
+    // 使用 requestAnimationFrame 确保流畅更新
+    requestAnimationFrame(() => {
+      setSliderPosition(percentage);
+    });
   }, [isDragging]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
 
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.touches[0].clientX - rect.left;
     const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    setSliderPosition(percentage);
+    
+    // 使用 requestAnimationFrame 确保流畅更新
+    requestAnimationFrame(() => {
+      setSliderPosition(percentage);
+    });
   }, [isDragging]);
 
   return (
@@ -85,23 +95,32 @@ export default function BeforeAfterSlider({
           />
         </div>
 
-        {/* Slider Line */}
+        {/* Slider Line - 精确居中定位 */}
         <div 
-          className="absolute top-0 bottom-0 w-1 bg-amber-400 shadow-lg cursor-ew-resize z-10"
-          style={{ left: `${sliderPosition}%`, transform: 'translateX(-50%)' }}
+          className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
+          style={{ 
+            left: `${sliderPosition}%`,
+            transform: 'translateX(-50%)',
+            willChange: 'transform'
+          }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleMouseDown}
         >
-          {/* Slider Handle */}
+          {/* Slider Handle - 完美居中 */}
           <motion.div 
-            className="absolute top-1/2 left-1/2 w-8 h-8 bg-amber-400 rounded-full shadow-xl cursor-ew-resize border-2 border-white"
-            style={{ transform: 'translate(-50%, -50%)' }}
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
+            className="absolute w-6 h-6 bg-white rounded-full shadow-lg cursor-ew-resize border border-gray-300"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              willChange: 'transform'
+            }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-1 h-4 bg-white rounded-full mx-0.5"></div>
-              <div className="w-1 h-4 bg-white rounded-full mx-0.5"></div>
+              <div className="w-0.5 h-3 bg-gray-400 rounded-full mx-px"></div>
+              <div className="w-0.5 h-3 bg-gray-400 rounded-full mx-px"></div>
             </div>
           </motion.div>
         </div>

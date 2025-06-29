@@ -38,7 +38,7 @@ export default function ImageUpload({
         reader.onload = (e) => {
           const preview = e.target?.result as string;
           const newImage: UploadedImage = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            id: Date.now().toString() + '_' + file.name.replace(/[^a-zA-Z0-9]/g, '_'),
             file,
             preview,
             name: file.name

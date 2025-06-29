@@ -1,0 +1,7 @@
+{
+    // 让终端铃声一定发声
+    "accessibility.signals.terminalBell": {
+      "sound": "on",          // "auto" 只在接入屏幕阅读器时才响
+      "announcement": "off"   // 不需要语音播报可关掉
+    }
+  }

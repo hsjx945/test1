@@ -103,12 +103,14 @@ export const SMART_FEATURES = {
 // 提示词处理工具函数
 export class PromptEnhancer {
   static getRandomPrompt(): string {
-    return RANDOM_PROMPTS[Math.floor(Math.random() * RANDOM_PROMPTS.length)];
+    const time = Date.now();
+    return RANDOM_PROMPTS[time % RANDOM_PROMPTS.length];
   }
 
   static addArtHistoryStyle(prompt: string): string {
     if (!prompt.trim()) return prompt;
-    const artStyle = SMART_FEATURES.artHistory[Math.floor(Math.random() * SMART_FEATURES.artHistory.length)];
+    const time = Date.now();
+    const artStyle = SMART_FEATURES.artHistory[time % SMART_FEATURES.artHistory.length];
     return `${prompt.trim()}, ${artStyle}`;
   }
 

@@ -76,3 +76,4 @@ flux-image-generator/
 - localStorage keys use date-based format: `flux_usage_${date}` and `flux_history`
 - Responsive breakpoints: sm (640px), md (768px), lg (1024px)
 - Purple gradient theme (#8b5cf6 to #7c3aed) on dark background
+请始终用简体中文回答，包括代码注释在内。

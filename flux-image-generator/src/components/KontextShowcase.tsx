@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import BeforeAfterSlider from './BeforeAfterSlider';
-import { Wand, Palette, User, Type, Sparkles, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Wand, Palette, User, Copy, Sparkles, ArrowRight } from 'lucide-react';
 
 interface ShowcaseExample {
   id: string;
@@ -12,7 +13,7 @@ interface ShowcaseExample {
   beforeImage: string;
   afterImage: string;
   prompt: string;
-  category: 'object' | 'style' | 'character' | 'text';
+  category: 'object' | 'style' | 'character';
   icon: React.ReactNode;
 }
 
@@ -21,9 +22,9 @@ const showcaseExamples: ShowcaseExample[] = [
     id: 'object-replacement',
     title: '物体替换',
     description: '精确替换图像中的特定物体，保持其他元素不变',
-    beforeImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjEyMTIxIi8+PGNpcmNsZSBjeD0iMjAwIiBjeT0iMTUwIiByPSI2MCIgZmlsbD0iIzMzNzNkYyIvPjx0ZXh0IHg9IjIwMCIgeT0iMjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCIgZm9udC1mYW1pbHk9IkFyaWFsIj7ljp/lm77kuK3mnInmsb3ova88L3RleHQ+PC9zdmc+',
-    afterImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjEyMTIxIi8+PHJlY3QgeD0iMTcwIiB5PSIxMjAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0iI2Y1OWUwYiIgcng9IjEwIi8+PHRleHQgeD0iMjAwIiB5PSIyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE0IiBmb250LWZhbWlseT0iQXJpYWwiPuabtOaNouWQjueahOaRqOaJmOi9pjwvdGV4dD48L3N2Zz4=',
-    prompt: '将圆形物体替换为方形物体',
+    beforeImage: '/images/flux-examples/example1.webp',
+    afterImage: '/images/flux-examples/example2.webp',
+    prompt: 'Replace the red car with a blue bicycle, keep everything else exactly the same',
     category: 'object',
     icon: <Wand className="w-5 h-5" />
   },
@@ -31,43 +32,58 @@ const showcaseExamples: ShowcaseExample[] = [
     id: 'style-transfer',
     title: '风格转换',
     description: '改变图像的艺术风格，同时保持主体和构图',
-    beforeImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2ZjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2EpIi8+PHRleHQgeD0iMjAwIiB5PSIxNTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIiBmb250LXNpemU9IjE4IiBmb250LWZhbWlseT0iQXJpYWwiPueBqOWunuS4u+S5iemdoOWDjzwvdGV4dD48dGV4dCB4PSIyMDAiIHk9IjI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtZmFtaWx5PSJBcmlhbCI+5Y6f5pig6aKY6ImyPC90ZXh0Pjwvc3ZnPg==',
-    afterImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48ZmlsdGVyIGlkPSJiIj48ZmVHYXVzc2lhbkJsdXIgaW49IlNvdXJjZUdyYXBoaWMiIHN0ZERldmlhdGlvbj0iMiIvPjwvZmlsdGVyPjxwYXR0ZXJuIGlkPSJjIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2Y1OWUwYiIgb3BhY2l0eT0iMC4zIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2MpIi8+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iIzM5MzkzOSIgZmlsdGVyPSJ1cmwoI2IpIiBvcGFjaXR5PSIwLjciLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2Y1OWUwYiIgZm9udC1zaXplPSIxOCIgZm9udC1mYW1pbHk9IkFyaWFsIj7nurjnlLvmtLfoibLnmoQ8L3RleHQ+PHRleHQgeD0iMjAwIiB5PSIyODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmNTllMGIiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtZmFtaWx5PSJBcmlhbCI+5Y2w6LGh5rS+6aKY6ImyPC90ZXh0Pjwvc3ZnPg==',
-    prompt: '转换为印象派油画风格',
+    beforeImage: '/images/flux-examples/example2.webp',
+    afterImage: '/images/flux-examples/example4.webp',
+    prompt: 'Transform this portrait into a vintage oil painting style from the 1800s, maintaining the same pose and composition',
     category: 'style',
     icon: <Palette className="w-5 h-5" />
   },
   {
-    id: 'character-consistency',
-    title: '角色一致性',
-    description: '在不同场景中保持角色特征的一致性',
-    beforeImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzczNzM3Ii8+PGNpcmNsZSBjeD0iMjAwIiBjeT0iMTIwIiByPSIzMCIgZmlsbD0iI2ZkYmE3NCIvPjxyZWN0IHg9IjE4MCIgeT0iMTUwIiB3aWR0aD0iNDAiIGhlaWdodD0iNjAiIGZpbGw9IiMzZjc2ZjQiLz48cmVjdCB4PSIxNDAiIHk9IjIwMCIgd2lkdGg9IjEyMCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzU5NTk1OSIvPjx0ZXh0IHg9IjIwMCIgeT0iMjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCIgZm9udC1mYW1pbHk9IkFyaWFsIj7ljp/lm77kuK3nmoTnlLXliKnlrqQtPuWKnuWFrOWupDwvdGV4dD48L3N2Zz4=',
-    afterImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMjJjNTVlIi8+PGVsbGlwc2UgY3g9IjIwMCIgY3k9IjI2MCIgcng9IjgwIiByeT0iMjAiIGZpbGw9IiMxNmEzNGEiLz48Y2lyY2xlIGN4PSIzMDAiIGN5PSI4MCIgcj0iMjAiIGZpbGw9IiNmZGJhNzQiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjE1IiBmaWxsPSIjZmY5MzNhIi8+PGNpcmNsZSBjeD0iMjAwIiBjeT0iMTIwIiByPSIzMCIgZmlsbD0iI2ZkYmE3NCIvPjxyZWN0IHg9IjE4MCIgeT0iMTUwIiB3aWR0aD0iNDAiIGhlaWdodD0iNjAiIGZpbGw9IiMzZjc2ZjQiLz48dGV4dCB4PSIyMDAiIHk9IjI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtZmFtaWx5PSJBcmlhbCI+5oyH5Lit55qE6KeS6Imy6L2254e75Yqo5Yiw57qm5Yy65Lit5a2mPC90ZXh0Pjwvc3ZnPg==',
-    prompt: '将角色移动到公园环境中',
+    id: 'character-edit',
+    title: '角色编辑',
+    description: '修改人物的服装、发型或表情，保持身份特征',
+    beforeImage: '/images/flux-examples/example4.webp',
+    afterImage: '/images/flux-examples/example1.webp',
+    prompt: 'Change the person\'s outfit to a formal business suit and add glasses, keep the same facial features',
     category: 'character',
     icon: <User className="w-5 h-5" />
-  },
-  {
-    id: 'text-editing',
-    title: '文字编辑',
-    description: '直接编辑图像中的文字内容',
-    beforeImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyYTJhIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSIyMDAiIGhlaWdodD0iMTAwIiBmaWxsPSJ3aGl0ZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIyMDAiIHk9IjE2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzIyYzU1ZSIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtZmFtaWx5PSJBcmlhbCI+6JCl5Lia5LitPC90ZXh0Pjx0ZXh0IHg9IjIwMCIgeT0iMjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCIgZm9udC1mYW1pbHk9IkFyaWFsIj7ljp/lm77nirbniYxPUEVO5qCH54mMPC90ZXh0Pjwvc3ZnPg==',
-    afterImage: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMmEyYTJhIi8+PHJlY3QgeD0iMTAwIiB5PSIxMDAiIHdpZHRoPSIyMDAiIGhlaWdodD0iMTAwIiBmaWxsPSJ3aGl0ZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz48dGV4dCB4PSIyMDAiIHk9IjE2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2VmNDQ0NCIgZm9udC1zaXplPSIyNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZvbnQtZmFtaWx5PSJBcmlhbCI+5LyR5oGvPC90ZXh0Pjx0ZXh0IHg9IjIwMCIgeT0iMjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxNCIgZm9udC1mYW1pbHk9IkFyaWFsIj7ov5/mlK/nirbniYzlsIblrabniYzmiafotYTmm7TmlLnkuLpDTE9TRUTlrabniYw8L3RleHQ+PC9zdmc+',
-    prompt: '将标牌文字从"营业中"改为"休息"',
-    category: 'text',
-    icon: <Type className="w-5 h-5" />
   }
 ];
 
 const categoryColors = {
   object: 'from-blue-500 to-cyan-500',
   style: 'from-purple-500 to-pink-500',
-  character: 'from-green-500 to-emerald-500',
-  text: 'from-orange-500 to-red-500'
+  character: 'from-green-500 to-emerald-500'
 };
 
 export default function KontextShowcase() {
   const [selectedExample, setSelectedExample] = useState(showcaseExamples[0]);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+
+  const copyPromptToClipboard = async (prompt: string) => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopyStatus('提示词已复制！');
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch {
+      setCopyStatus('复制失败');
+      setTimeout(() => setCopyStatus(null), 2000);
+    }
+  };
+
+  const copyToCreationForm = (prompt: string) => {
+    // 将提示词填入创作表单
+    const textareas = document.querySelectorAll('textarea');
+    const promptTextarea = textareas[0]; // 假设第一个textarea是提示词输入框
+    if (promptTextarea) {
+      promptTextarea.value = prompt;
+      promptTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+      // 滚动到创作区域
+      document.getElementById('create')?.scrollIntoView({ behavior: 'smooth' });
+      setCopyStatus('提示词已复制到创作界面！');
+      setTimeout(() => setCopyStatus(null), 3000);
+    }
+  };
 
   return (
     <motion.section 
@@ -108,159 +124,147 @@ export default function KontextShowcase() {
         </div>
 
         {/* Main Content */}
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
-          {/* Interactive Demo */}
-          <motion.div 
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="space-y-6"
-          >
-            <div className="atelier-card p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2 rounded-lg bg-gradient-to-r ${categoryColors[selectedExample.category]}`}>
-                  {selectedExample.icon}
+        <div className="atelier-card p-8 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-start">
+            {/* Interactive Demo */}
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="space-y-6"
+            >
+              <div className="border border-amber-500/30 rounded-xl p-6 bg-amber-500/5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-lg bg-gradient-to-r ${categoryColors[selectedExample.category]}`}>
+                    {selectedExample.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-amber-100">
+                      {selectedExample.title}
+                    </h3>
+                    <p className="text-sm text-amber-200/70">
+                      {selectedExample.description}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-amber-100">
-                    {selectedExample.title}
-                  </h3>
-                  <p className="text-sm text-amber-200/70">
-                    {selectedExample.description}
+
+                {/* Before/After Slider */}
+                <BeforeAfterSlider
+                  beforeImage={selectedExample.beforeImage}
+                  afterImage={selectedExample.afterImage}
+                  beforeLabel="修改前"
+                  afterLabel="修改后"
+                  className="mb-6"
+                />
+
+                {/* Prompt Display */}
+                <div className="bg-zinc-800/50 border border-amber-500/30 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <ArrowRight className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-medium text-amber-300">编辑提示词</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => copyPromptToClipboard(selectedExample.prompt)}
+                        className="text-amber-200 hover:text-amber-100 hover:bg-amber-500/10 px-2 py-1 h-7"
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        复制
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => copyToCreationForm(selectedExample.prompt)}
+                        className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-3 py-1 h-7 text-xs"
+                      >
+                        <Wand className="w-3 h-3 mr-1" />
+                        立即使用
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-amber-100 text-sm leading-relaxed font-mono bg-black/20 p-3 rounded-lg">
+                    &ldquo;{selectedExample.prompt}&rdquo;
                   </p>
                 </div>
               </div>
+            </motion.div>
 
-              {/* Before/After Slider */}
-              <BeforeAfterSlider
-                beforeImage={selectedExample.beforeImage}
-                afterImage={selectedExample.afterImage}
-                beforeLabel="修改前"
-                afterLabel="修改后"
-                className="mb-4"
-              />
-
-              {/* Prompt Display */}
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowRight className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-medium text-amber-300">编辑指令</span>
+            {/* Examples List */}
+            <motion.div 
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="space-y-6"
+            >
+              <div>
+                <h3 className="text-2xl font-semibold text-amber-100 mb-6">
+                  应用示例
+                </h3>
+                <div className="grid gap-4">
+                  {showcaseExamples.map((example, index) => (
+                    <motion.button
+                      key={example.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      onClick={() => setSelectedExample(example)}
+                      className={`p-4 rounded-xl border transition-all duration-300 text-left ${
+                        selectedExample.id === example.id
+                          ? 'border-amber-500 bg-amber-500/20'
+                          : 'border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg bg-gradient-to-r ${categoryColors[example.category]}`}>
+                          {example.icon}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-amber-100 font-medium">{example.title}</h4>
+                          <p className="text-amber-200/70 text-sm">{example.description}</p>
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
                 </div>
-                <p className="text-amber-100 font-medium">
-                  &ldquo;{selectedExample.prompt}&rdquo;
-                </p>
               </div>
-            </div>
-          </motion.div>
 
-          {/* Feature Explanation & Examples List */}
-          <motion.div 
-            initial={{ opacity: 0, x: 50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="space-y-6"
-          >
-            {/* Core Features */}
-            <div className="atelier-card p-6">
-              <h3 className="text-2xl font-semibold text-amber-100 mb-4">
-                核心技术特性
-              </h3>
-              <ul className="space-y-3">
-                {[
-                  { 
-                    title: '精确局部编辑', 
-                    desc: '只修改指定区域，其他部分保持原样' 
-                  },
-                  { 
-                    title: '角色一致性', 
-                    desc: '在多次编辑中保持角色特征不变' 
-                  },
-                  { 
-                    title: '自然语言指令', 
-                    desc: '用简单的文字描述实现复杂编辑' 
-                  },
-                  { 
-                    title: '快速生成', 
-                    desc: '6-12秒内完成高质量图像编辑' 
-                  }
-                ].map((feature, index) => (
-                  <motion.li 
-                    key={index}
-                    initial={{ opacity: 0, x: 20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    className="flex items-start gap-3"
-                  >
-                    <div className="w-2 h-2 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="text-amber-200 font-medium">{feature.title}</h4>
-                      <p className="text-amber-200/70 text-sm">{feature.desc}</p>
-                    </div>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Example Categories */}
-            <div className="atelier-card p-6">
-              <h3 className="text-xl font-semibold text-amber-100 mb-4">
-                应用示例
-              </h3>
-              <div className="grid gap-3">
-                {showcaseExamples.map((example, index) => (
-                  <motion.button
-                    key={example.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    onClick={() => setSelectedExample(example)}
-                    className={`p-4 rounded-xl border transition-all duration-300 text-left ${
-                      selectedExample.id === example.id
-                        ? 'border-amber-500 bg-amber-500/20'
-                        : 'border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-gradient-to-r ${categoryColors[example.category]}`}>
-                        {example.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-amber-100 font-medium">{example.title}</h4>
-                        <p className="text-amber-200/70 text-sm">{example.description}</p>
-                      </div>
-                    </div>
-                  </motion.button>
-                ))}
+              {/* Quick Tips */}
+              <div className="border border-amber-500/30 rounded-xl p-6 bg-amber-500/5">
+                <h4 className="text-lg font-semibold text-amber-100 mb-4">使用技巧</h4>
+                <ul className="space-y-2 text-sm text-amber-200/80">
+                  <li className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>使用英文提示词可获得更好的效果</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>描述要具体明确，避免模糊的表达</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
+                    <span>可以指定保持不变的元素</span>
+                  </li>
+                </ul>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
 
-        {/* Call to Action */}
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="text-center mt-16"
-        >
-          <div className="atelier-card p-8 max-w-3xl mx-auto">
-            <h3 className="text-2xl font-semibold text-amber-100 mb-4">
-              立即体验 Flux Kontext Dev
-            </h3>
-            <p className="text-amber-200/80 mb-6">
-              上传你的图片，用简单的文字描述你想要的修改，让AI为你实现精确的图像编辑
-            </p>
-            <motion.a
-              href="#create"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-8 py-3 rounded-full font-semibold hover:from-amber-600 hover:to-amber-700 transition-all duration-300"
-            >
-              <Wand className="w-5 h-5" />
-              开始创作
-            </motion.a>
-          </div>
-        </motion.div>
+        {/* Copy Status */}
+        {copyStatus && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 right-8 z-50"
+          >
+            <div className="atelier-card px-6 py-3 border border-amber-500/30 bg-amber-500/10">
+              <p className="text-amber-200 font-medium">{copyStatus}</p>
+            </div>
+          </motion.div>
+        )}
       </div>
     </motion.section>
   );

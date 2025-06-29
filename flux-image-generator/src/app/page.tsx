@@ -4,31 +4,25 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import MaestroButton from '@/components/MaestroButton';
 import KontextShowcase from '@/components/KontextShowcase';
+import PricingSection from '@/components/PricingSection';
+import ProfessionalGenerator from '@/components/ProfessionalGenerator';
 import { 
   Download, 
   Copy,
-  Heart,
-  Palette,
-  Zap,
   Moon,
   Sun,
   Wand,
   X,
-  Settings,
   Mail,
   Twitter,
   Github,
   Cpu,
-  Upload,
   Camera,
   Trash2,
-  Edit3,
-  RotateCcw
+  RotateCcw,
+  Palette
 } from 'lucide-react';
 
 const STYLE_PRESETS = [
@@ -82,17 +76,9 @@ const STYLE_PRESETS = [
   }
 ];
 
-const ASPECT_RATIOS = [
-  { id: '1:1', name: '正方形 (1:1)', value: '1:1', icon: '□' },
-  { id: '16:9', name: '宽屏 (16:9)', value: '16:9', icon: '▬' },
-  { id: '9:16', name: '竖屏 (9:16)', value: '9:16', icon: '▮' },
-  { id: '4:3', name: '标准 (4:3)', value: '4:3', icon: '▭' },
-  { id: '3:4', name: '竖版 (3:4)', value: '3:4', icon: '▯' },
-  { id: '21:9', name: '超宽 (21:9)', value: '21:9', icon: '▬' },
-];
 
 
-const MAX_DAILY_USAGE = 10;
+const MAX_DAILY_USAGE = 9999; // 测试阶段无限额度
 
 interface GeneratedImage {
   id: string;
@@ -130,13 +116,14 @@ export default function AtelierAI() {
   const [guidance, setGuidance] = useState(2.5);
   const [numInferenceSteps, setNumInferenceSteps] = useState(28);
   const [outputQuality, setOutputQuality] = useState(80);
-  const [outputFormat, setOutputFormat] = useState('webp');
-  const [goFast, setGoFast] = useState(true);
-  const [seed, setSeed] = useState('');
+  const [outputFormat] = useState('webp');
+  const [goFast] = useState(true);
+  const [seed] = useState('');
   const [numImages, setNumImages] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [currentGeneratedPrompt, setCurrentGeneratedPrompt] = useState(''); // 存储当前生成的提示词
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [usageToday, setUsageToday] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -248,21 +235,37 @@ export default function AtelierAI() {
   const handleImageUpload = useCallback((files: FileList | null) => {
     if (!files) return;
 
-    const file = files[0]; // 只取第一张图片
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const preview = e.target?.result as string;
-        const newImage: UploadedImage = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          file,
-          preview,
-          name: file.name
+    // 处理多张图片上传
+    const newImages: UploadedImage[] = [];
+    let processedCount = 0;
+    const totalFiles = Math.min(files.length, 4); // 最多4张图片
+
+    for (let i = 0; i < totalFiles; i++) {
+      const file = files[i];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const preview = e.target?.result as string;
+          const newImage: UploadedImage = {
+            id: Date.now().toString() + '_' + i + '_' + file.name.replace(/[^a-zA-Z0-9]/g, '_'),
+            file,
+            preview,
+            name: file.name
+          };
+          newImages.push(newImage);
+          processedCount++;
+          
+          // 当所有图片都处理完成时，更新状态
+          if (processedCount === totalFiles) {
+            setUploadedImages(newImages);
+            // 只有上传单张图片时才自动启用Kontext模式
+            if (newImages.length === 1) {
+              setUseKontext(true);
+            }
+          }
         };
-        setUploadedImages([newImage]); // 替换现有图片
-        setUseKontext(true); // 上传图片后自动启用Kontext模式
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
     }
   }, []);
 
@@ -397,6 +400,99 @@ export default function AtelierAI() {
     }
   };
 
+  // 滚动到生成器并填入提示词
+  const scrollToGeneratorWithPrompt = (promptText: string) => {
+    setPrompt(promptText);
+    setSelectedImage(null); // 关闭模态框
+    
+    // 滚动到生成器位置
+    setTimeout(() => {
+      const generatorElement = document.querySelector('[data-generator]');
+      if (generatorElement) {
+        generatorElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        
+        // 聚焦到提示词输入框
+        setTimeout(() => {
+          const textareaElement = generatorElement.querySelector('textarea');
+          if (textareaElement) {
+            textareaElement.focus();
+          }
+        }, 500);
+      }
+    }, 100);
+  };
+
+  // 专业生成器数据处理
+  const handleProfessionalGenerate = async (data: {
+    prompt: string;
+    aspectRatio: string;
+    numImages: number;
+    style?: string;
+    colorScheme?: string;
+    lighting?: string;
+    composition?: string;
+    guidance?: number;
+    steps?: number;
+    quality?: number;
+  }) => {
+    // 更新状态
+    setPrompt(data.prompt);
+    setAspectRatio(data.aspectRatio);
+    setNumImages(data.numImages);
+    if (data.guidance) setGuidance(data.guidance);
+    if (data.steps) setNumInferenceSteps(data.steps);
+    if (data.quality) setOutputQuality(data.quality);
+    
+    // 如果有风格选择，设置风格
+    if (data.style) setSelectedStyle(data.style);
+    
+    // 直接使用传入的数据调用生成函数，避免状态更新延迟问题
+    await executeGenerationWithData(data.prompt, data.prompt, data);
+  };
+
+  // 使用指定prompt生成图像（解决状态更新延迟问题）
+  const handleGenerateWithPrompt = async (inputPrompt: string) => {
+    try {
+      let finalPrompt = inputPrompt.trim();
+      if (!finalPrompt) {
+        alert('请输入创作描述');
+        return;
+      }
+
+      // 检测是否为中文并翻译
+      const isChineseText = /[\u4e00-\u9fff]/.test(finalPrompt);
+      if (isChineseText) {
+        try {
+          const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: finalPrompt }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.translatedText) {
+              finalPrompt = data.translatedText;
+            }
+          }
+        } catch (error) {
+          console.error('Translation failed:', error);
+          // 继续使用原始prompt
+        }
+      }
+
+      return await executeGeneration(finalPrompt, inputPrompt);
+    } catch (error) {
+      console.error('Generation error:', error);
+      alert('生成失败，请重试');
+      setIsGenerating(false);
+      setProgress(0);
+    }
+  };
+
   // 生成图像
   const handleGenerate = async () => {
     try {
@@ -405,98 +501,116 @@ export default function AtelierAI() {
         alert('请输入创作描述');
         return;
       }
-      
+
+      return await executeGeneration(finalPrompt, prompt);
+    } catch (error) {
+      console.error('Generation error:', error);
+      alert('生成失败，请重试');
+      setIsGenerating(false);
+      setProgress(0);
+    }
+  };
+
+  // 执行具体的生成逻辑（带数据参数版本）
+  const executeGenerationWithData = async (finalPrompt: string, originalPrompt: string, generationData?: any) => {
+    try {
       if (usageToday >= MAX_DAILY_USAGE) {
         alert(`今日剩余次数不足，剩余 ${MAX_DAILY_USAGE - usageToday} 次`);
         return;
       }
 
+      const effectiveNumImages = generationData?.numImages || numImages;
+      const effectiveAspectRatio = generationData?.aspectRatio || aspectRatio;
+      const effectiveGuidance = generationData?.guidance || guidance;
+      const effectiveSteps = generationData?.steps || numInferenceSteps;
+      const effectiveQuality = generationData?.quality || outputQuality;
+
+      // 立即显示进度条状态
       setIsGenerating(true);
-      setProgress(0);
+      setProgress(1); // 立即设置为1%而不是0%
       setGeneratedImages([]);
+      setCurrentGeneratedPrompt(originalPrompt); // 设置当前生成的提示词
 
-      console.log('开始生成图像，提示词:', finalPrompt, '数量:', numImages);
+      console.log('开始生成图像，提示词:', finalPrompt, '数量:', effectiveNumImages);
+      // 改进进度条：1%间隔更新，避免重复从0开始
+      let currentProgress = 1; // 从1%开始
       const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 5;
-        });
-      }, 1000);
-
-      // 批量生成图像
-      const promises = [];
-      
-      for (let i = 0; i < numImages; i++) {
-        const requestData = {
-          prompt: finalPrompt,
-          inputImage: uploadedImages.length > 0 ? uploadedImages[0].editedPreview || uploadedImages[0].preview : undefined,
-          aspectRatio: aspectRatio,
-          guidance: guidance,
-          numInferenceSteps: numInferenceSteps,
-          outputQuality: outputQuality,
-          outputFormat: outputFormat,
-          goFast: goFast,
-          seed: seed ? (parseInt(seed) + i).toString() : undefined, // 每张图使用不同的seed
-          useKontext: useKontext || uploadedImages.length > 0,
-        };
-
-        console.log(`发送第${i + 1}张图请求数据:`, requestData);
-
-        const promise = fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestData),
-        }).then(response => {
-          if (!response.ok) {
-            throw new Error(`请求失败: ${response.status} ${response.statusText}`);
-          }
-          return response.json();
-        });
-
-        promises.push(promise);
-      }
-
-      // 等待所有图像生成完成
-      const results = await Promise.all(promises);
-      clearInterval(progressInterval);
-
-      // 处理结果
-      const successResults = results.filter(data => data.success);
-      if (successResults.length > 0) {
-        const imageUrls = successResults.map(data => data.imageUrl);
-        setGeneratedImages(imageUrls);
-        
-        // 将所有成功的图像添加到历史记录
-        const newImages = successResults.map((data, index) => ({
-          id: `${Date.now()}-${index}`,
-          url: data.imageUrl,
-          prompt: finalPrompt,
-          timestamp: Date.now(),
-          style: selectedStyle
-        }));
-        
-        const newHistory = [...newImages, ...history.slice(0, 20 - newImages.length)];
-        setHistory(newHistory);
-        
-        // 使用安全存储
-        const success = safeStorageWrite('flux_history', JSON.stringify(newHistory));
-        if (!success) {
-          setHistory(newImages);
+        currentProgress += 1;
+        if (currentProgress <= 90) {
+          setProgress(currentProgress);
+        } else {
+          clearInterval(progressInterval);
         }
-        
-        const today = new Date().toDateString();
-        const newUsage = usageToday + successResults.length;
-        safeStorageWrite(`flux_usage_${today}`, newUsage.toString());
-        setUsageToday(newUsage);
-        
-        setProgress(100);
-      } else {
-        throw new Error('所有图像生成失败');
+      }, 100); // 每100ms增加1%
+
+      // 使用新的API一次性生成多张图片
+      const requestData = {
+        prompt: finalPrompt,
+        inputImage: uploadedImages.length > 0 ? uploadedImages[0].editedPreview || uploadedImages[0].preview : undefined,
+        aspectRatio: effectiveAspectRatio,
+        guidance: effectiveGuidance,
+        numInferenceSteps: effectiveSteps,
+        outputQuality: effectiveQuality,
+        outputFormat: outputFormat,
+        goFast: goFast,
+        seed: seed,
+        useKontext: uploadedImages.length > 0,
+        numOutputs: uploadedImages.length > 0 ? 1 : effectiveNumImages
+      };
+
+      console.log('发送生成请求数据:', requestData);
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`请求失败: ${response.status} ${response.statusText}`);
       }
 
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '生成失败');
+      }
+
+      clearInterval(progressInterval);
+      setProgress(100);
+
+      // 处理API返回的多张图片
+      const imageUrls = data.imageUrls || [data.imageUrl]; // 兼容旧版本
+      console.log('生成成功，图片数量:', imageUrls.length);
+
+      // 显示生成的图像
+      setGeneratedImages(imageUrls);
+
+      // 将所有图像添加到历史记录，使用原始中文提示词
+      const newImages = imageUrls.map((imageUrl, index) => ({
+        id: `${Date.now()}-${index}`,
+        url: imageUrl,
+        prompt: originalPrompt, // 使用原始提示词而非翻译后的
+        timestamp: Date.now(),
+        style: selectedStyle
+      }));
+      
+      const newHistory = [...newImages, ...history.slice(0, 20 - newImages.length)];
+      setHistory(newHistory);
+      
+      // 使用安全存储
+      const success = safeStorageWrite('flux_history', JSON.stringify(newHistory));
+      if (!success) {
+        setHistory(newImages);
+      }
+      
+      const today = new Date().toDateString();
+      const newUsage = usageToday + imageUrls.length;
+      safeStorageWrite(`flux_usage_${today}`, newUsage.toString());
+      setUsageToday(newUsage);
+      
+      console.log('图像生成成功，数量:', imageUrls.length);
+        
     } catch (error) {
       console.error('Generation error:', error);
       const errorMessage = error instanceof Error ? error.message : '生成失败，请重试';
@@ -505,6 +619,11 @@ export default function AtelierAI() {
       setTimeout(() => setIsGenerating(false), 500);
       setProgress(0);
     }
+  };
+
+  // 执行具体的生成逻辑
+  const executeGeneration = async (finalPrompt: string, originalPrompt: string) => {
+    return executeGenerationWithData(finalPrompt, originalPrompt);
   };
 
   const downloadImage = async (url: string) => {
@@ -642,393 +761,36 @@ export default function AtelierAI() {
             </p>
           </motion.div>
 
-          {/* 简洁AI生成器界面 */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="atelier-card p-8 max-w-4xl mx-auto"
-          >
-            {/* 标题区域 */}
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-amber-100 mb-2">AI 图像生成器</h2>
-              <p className="text-amber-200/70 text-sm">请用英文输入提示词以获得最佳效果</p>
-            </div>
-
-            {/* 主输入区域 */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-amber-200 mb-3 font-medium">描述提示词</label>
-                <Textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="您想看到什么？"
-                  className="atelier-input min-h-[120px] text-lg resize-none"
-                  maxLength={2000}
-                />
-              </div>
-
-              {/* 简洁控制面板 */}
-              <div className="grid grid-cols-5 gap-4 items-center">
-                {/* 方形比例 */}
-                <div className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    id="square-ratio"
-                    checked={aspectRatio === '1:1'}
-                    onChange={() => setAspectRatio(aspectRatio === '1:1' ? '16:9' : '1:1')}
-                    className="w-4 h-4 text-amber-400 border-amber-500/30 rounded focus:ring-amber-400"
-                  />
-                  <label htmlFor="square-ratio" className="ml-2 text-sm text-amber-200">方形比例</label>
-                </div>
-
-                {/* 生成数量 */}
-                <div>
-                  <label className="block text-xs text-amber-300/70 mb-1">数量</label>
-                  <Select value={numImages.toString()} onValueChange={(value) => setNumImages(Number(value))}>
-                    <SelectTrigger className="atelier-select h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1张</SelectItem>
-                      <SelectItem value="2">2张</SelectItem>
-                      <SelectItem value="3">3张</SelectItem>
-                      <SelectItem value="4">4张</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* 默认选项显示 */}
-                <div className="text-xs text-amber-300/50 space-y-1">
-                  <div>无风格</div>
-                  <div>无色彩</div>
-                </div>
-                <div className="text-xs text-amber-300/50 space-y-1">
-                  <div>无光照</div>
-                  <div>无构图</div>
-                </div>
-
-                {/* 开关控制 */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <span className="text-xs text-amber-300/70 mr-2">负面提示词</span>
-                    <input type="checkbox" className="w-3 h-3 rounded" />
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs text-amber-300/70 mr-2">高质量</span>
-                    <input type="checkbox" defaultChecked className="w-3 h-3 rounded" />
-                  </div>
-                </div>
-              </div>
-
-              {/* 操作按钮行 */}
-              <div className="grid grid-cols-3 gap-4 items-center">
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setPrompt('')}
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
-                  >
-                    清除
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      const randomPrompts = [
-                        "A majestic dragon soaring through clouds at sunset, highly detailed, fantasy art, cinematic lighting",
-                        "Beautiful woman with flowing hair in an elegant dress, portrait photography, soft lighting, detailed",
-                        "Futuristic cityscape at night with neon lights, cyberpunk style, rain-soaked streets, atmospheric",
-                        "Ancient forest with mystical creatures, magical atmosphere, ethereal lighting, fantasy landscape",
-                        "Steampunk mechanical bird with intricate gears, brass and copper materials, Victorian era design"
-                      ];
-                      setPrompt(randomPrompts[Math.floor(Math.random() * randomPrompts.length)]);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
-                  >
-                    随机
-                  </Button>
-                </div>
-
-                {/* 参考图像上传 */}
-                <div className="text-center">
-                  <label className="text-xs text-amber-300/70 mb-1 block">替换图像</label>
-                  <div 
-                    className="h-10 border border-dashed border-amber-500/30 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-amber-500/5"
-                    onClick={() => document.getElementById('image-upload')?.click()}
-                  >
-                    <input
-                      id="image-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(e.target.files)}
-                      className="hidden"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Upload className="w-4 h-4 text-amber-400" />
-                      <span className="text-xs text-amber-300">
-                        {uploadedImages.length > 0 ? '上传新图像' : '上传参考图像'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 生成按钮 */}
-                <div className="text-center">
-                  <MaestroButton
-                    onClick={handleGenerate}
-                    disabled={isGenerating || !prompt.trim() || usageToday >= MAX_DAILY_USAGE}
-                    loading={isGenerating}
-                    size="md"
-                    variant="primary"
-                  >
-                    生成
-                  </MaestroButton>
-                </div>
-              </div>
-            </div>
-
-            {/* 参考图像区域 */}
-            {uploadedImages.length > 0 && (
-              <div className="mt-8 p-6 border border-amber-500/30 rounded-lg bg-amber-500/5">
-                <div className="flex items-center gap-3 mb-4">
-                  <Camera className="w-5 h-5 text-amber-400" />
-                  <h4 className="font-bold text-amber-100">参考图像</h4>
-                  <span className="text-xs bg-amber-500/20 text-amber-200 px-2 py-1 rounded">
-                    Kontext模式
-                  </span>
-                </div>
-                
-                <div className="grid md:grid-cols-3 gap-6">
-                  {/* 图像预览 */}
-                  <div className="space-y-3">
-                    <div className="aspect-square rounded-lg overflow-hidden border border-amber-500/30 bg-zinc-900">
-                      <Image
-                        src={uploadedImages[0].editedPreview || uploadedImages[0].preview}
-                        alt="参考图像"
-                        width={200}
-                        height={200}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => setEditingImageId(uploadedImages[0].id)}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-amber-500/30 text-amber-200 hover:bg-amber-500/10"
-                      >
-                        <Edit3 className="w-3 h-3 mr-1" />
-                        编辑
-                      </Button>
-                      <Button
-                        onClick={() => removeUploadedImage(uploadedImages[0].id)}
-                        variant="outline"
-                        size="sm"
-                        className="border-red-500/30 text-red-200 hover:bg-red-500/10"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Kontext参数控制 */}
-                  <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">引导强度</label>
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          min="0"
-                          max="10"
-                          step="0.1"
-                          value={guidance}
-                          onChange={(e) => setGuidance(Number(e.target.value))}
-                          className="maestro-slider w-full"
-                        />
-                        <span className="text-xs text-amber-300">{guidance}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">推理步数</label>
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          min="4"
-                          max="50"
-                          value={numInferenceSteps}
-                          onChange={(e) => setNumInferenceSteps(Number(e.target.value))}
-                          className="maestro-slider w-full"
-                        />
-                        <span className="text-xs text-amber-300">{numInferenceSteps}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">输出质量</label>
-                      <div className="space-y-1">
-                        <input
-                          type="range"
-                          min="1"
-                          max="100"
-                          value={outputQuality}
-                          onChange={(e) => setOutputQuality(Number(e.target.value))}
-                          className="maestro-slider w-full"
-                        />
-                        <span className="text-xs text-amber-300">{outputQuality}%</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">输出格式</label>
-                      <Select value={outputFormat} onValueChange={setOutputFormat}>
-                        <SelectTrigger className="atelier-select h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="webp">WebP</SelectItem>
-                          <SelectItem value="jpg">JPG</SelectItem>
-                          <SelectItem value="png">PNG</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">随机种子</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          value={seed}
-                          onChange={(e) => setSeed(e.target.value)}
-                          placeholder="随机"
-                          className="atelier-input h-8 text-sm flex-1"
-                        />
-                        <Button
-                          onClick={() => setSeed(Math.floor(Math.random() * 1000000).toString())}
-                          variant="outline"
-                          size="sm"
-                          className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10 px-2"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm text-amber-200 font-medium">生成模式</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={goFast}
-                          onChange={(e) => setGoFast(e.target.checked)}
-                          className="rounded border-amber-500/30"
-                        />
-                        <span className="text-sm text-amber-300">快速模式</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 基础设置行 */}
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-3 gap-4">
-              {/* 艺术风格选择 */}
-              <div className="space-y-2">
-                <label className="text-sm text-amber-200 font-medium">艺术风格</label>
-                <Select value={selectedStyle} onValueChange={setSelectedStyle}>
-                  <SelectTrigger className="atelier-select h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STYLE_PRESETS.map((style) => (
-                      <SelectItem key={style.id} value={style.id}>
-                        {style.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* 画面比例（仅在无参考图像时显示） */}
-              {uploadedImages.length === 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm text-amber-200 font-medium">画面比例</label>
-                  <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                    <SelectTrigger className="atelier-select h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASPECT_RATIOS.map((ratio) => (
-                        <SelectItem key={ratio.id} value={ratio.value}>
-                          {ratio.icon} {ratio.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* 参考图像上传 */}
-              <div className="space-y-2">
-                <label className="text-sm text-amber-200 font-medium">
-                  {uploadedImages.length > 0 ? '替换图像' : '参考图像'}
-                </label>
-                <div 
-                  className="h-10 border border-dashed border-amber-500/30 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-amber-500/5"
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                >
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e.target.files)}
-                    className="hidden"
-                  />
-                  
-                  <div className="flex items-center gap-2">
-                    <Upload className="w-4 h-4 text-amber-400" />
-                    <span className="text-xs text-amber-300">
-                      {uploadedImages.length > 0 ? '上传新图像' : '上传参考图像'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* 大师级创作按钮 - 居中放置 */}
-          <div className="text-center mt-12">
-            <MaestroButton
-              onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim() || usageToday >= MAX_DAILY_USAGE}
-              loading={isGenerating}
-              size="lg"
-              variant="primary"
-            >
-              开始创作
-            </MaestroButton>
-            
-            {isGenerating && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-8 max-w-md mx-auto"
-              >
-                <div className="progress-atelier">
-                  <div 
-                    className="progress-gold"
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-                <p className="text-amber-300 mt-4 text-xl font-medium">
-                  艺术创作中... {progress}%
-                </p>
-              </motion.div>
-            )}
+          {/* 专业AI生成器界面 */}
+          <div data-generator>
+            <ProfessionalGenerator
+              onGenerate={handleProfessionalGenerate}
+              isGenerating={isGenerating}
+              disabled={usageToday >= MAX_DAILY_USAGE}
+              uploadedImages={uploadedImages}
+              onImageUpload={handleImageUpload}
+              onRemoveImage={removeUploadedImage}
+            />
           </div>
+
+          {/* 生成进度显示 */}
+          {isGenerating && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-8 max-w-md mx-auto text-center"
+            >
+              <div className="progress-atelier">
+                <div 
+                  className="progress-gold"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <p className="text-amber-300 mt-4 text-xl font-medium">
+                艺术创作中... {progress}%
+              </p>
+            </motion.div>
+          )}
 
         </div>
       </section>
@@ -1049,8 +811,12 @@ export default function AtelierAI() {
                   <h2 className="renaissance-title text-3xl mb-4">
                     您的艺术杰作
                   </h2>
-                  <p className="text-amber-200/80">
+                  <p className="text-amber-200/80 mb-4">
                     恭喜！您的创意已经转化为独特的数字艺术作品
+                  </p>
+                  {/* 简化的提示 */}
+                  <p className="text-amber-200/80 mb-6 text-center">
+                    点击图片放大查看
                   </p>
                 </div>
                 
@@ -1066,7 +832,7 @@ export default function AtelierAI() {
                       onClick={() => setSelectedImage({
                         id: `current-${index}`,
                         url: imageUrl,
-                        prompt: prompt || '当前生成的图像',
+                        prompt: currentGeneratedPrompt || '当前生成的图像',
                         timestamp: Date.now(),
                         style: selectedStyle
                       })}
@@ -1081,16 +847,15 @@ export default function AtelierAI() {
                         />
                       </div>
                       
-                      {/* 图像信息覆盖层 */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl">
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <p className="text-white text-sm font-medium mb-2 line-clamp-2">
-                            {prompt || '当前生成的图像'}
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-white/80">
-                            <span>风格: {selectedStyle || '无风格'}</span>
-                            <span>#{index + 1}</span>
+                      {/* 简化的悬停提示 */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <div className="w-12 h-12 mx-auto mb-2 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                           </div>
+                          <p className="text-sm font-medium">点击放大</p>
                         </div>
                       </div>
                       
@@ -1120,6 +885,36 @@ export default function AtelierAI() {
                           <Copy className="w-5 h-5" />
                         </Button>
                       </motion.div>
+                      
+                      {/* 图片下方的提示词和操作按钮 */}
+                      <div className="mt-4 p-3 bg-zinc-800/50 rounded-lg">
+                        <p className="text-amber-100 text-sm mb-3 line-clamp-2">
+                          {currentGeneratedPrompt}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(currentGeneratedPrompt);
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 text-xs"
+                          >
+                            复制提示词
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPrompt(currentGeneratedPrompt);
+                              handleGenerate();
+                            }}
+                            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 text-xs"
+                          >
+                            重新生成
+                          </Button>
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -1171,12 +966,37 @@ export default function AtelierAI() {
                         />
                       </div>
                       <div className="p-4">
-                        <p className="text-sm text-amber-300/80 truncate">
-                          {item.prompt.slice(0, 50)}...
+                        <p className="text-sm text-amber-300/80 line-clamp-2 mb-2">
+                          {item.prompt || '未知提示词'}
                         </p>
-                        <p className="text-xs text-amber-400/60 mt-1">
-                          {new Date(item.timestamp).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-amber-400/60">
+                            {new Date(item.timestamp).toLocaleDateString()}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrompt(item.prompt);
+                                handleGenerate();
+                              }}
+                              className="text-amber-400 hover:text-amber-300 transition-colors"
+                              title="重新生成"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(item.prompt, '提示词已复制到剪贴板');
+                              }}
+                              className="text-amber-400 hover:text-amber-300 transition-colors"
+                              title="复制提示词"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -1198,70 +1018,83 @@ export default function AtelierAI() {
             onClick={() => setSelectedImage(null)}
           >
             <motion.div 
-              className="relative max-w-5xl max-h-full w-full"
+              className="relative max-w-5xl w-full max-h-[90vh] overflow-y-auto"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", duration: 0.5 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="atelier-card p-6">
-                <Image
-                  src={selectedImage.url}
-                  alt="Selected artwork"
-                  width={1024}
-                  height={1024}
-                  className="w-full h-auto rounded-xl mb-6"
-                />
+              <div className="relative">
+                {/* 关闭按钮 */}
+                <Button
+                  size="icon"
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm rounded-full"
+                  title="关闭"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
                 
-                {/* 提示词信息区域 */}
-                <div className="bg-zinc-800/50 rounded-lg p-4 mb-4">
-                  <h3 className="text-amber-200 font-semibold mb-2 flex items-center">
-                    <Wand className="w-4 h-4 mr-2" />
-                    创作提示词
-                  </h3>
-                  <p className="text-amber-100/80 text-sm leading-relaxed mb-3">
-                    {selectedImage.prompt}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-amber-300/60">
-                    <span>风格: {STYLE_PRESETS.find(s => s.id === selectedImage.style)?.name || '无风格'}</span>
-                    <span>{new Date(selectedImage.timestamp).toLocaleString()}</span>
-                  </div>
+                {/* 图片 */}
+                <div className="relative bg-black rounded-xl overflow-hidden">
+                  <Image
+                    src={selectedImage.url}
+                    alt="Selected artwork"
+                    width={1024}
+                    height={1024}
+                    className="w-full h-auto max-h-[60vh] object-contain"
+                  />
                 </div>
                 
-                <div className="absolute top-8 right-8 flex space-x-3">
-                  <Button
-                    size="icon"
-                    onClick={() => copyToClipboard(selectedImage.prompt)}
-                    className="gold-glow text-black hover:scale-110 transition-transform"
-                    title="复制提示词"
-                  >
-                    <Copy className="w-5 h-5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={() => copyImageToClipboard(selectedImage.url)}
-                    className="gold-glow text-black hover:scale-110 transition-transform"
-                    title="复制图片"
-                  >
-                    <Camera className="w-5 h-5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={() => downloadImage(selectedImage.url)}
-                    className="gold-glow text-black hover:scale-110 transition-transform"
-                    title="下载图像"
-                  >
-                    <Download className="w-5 h-5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={() => setSelectedImage(null)}
-                    className="bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm"
-                    title="关闭"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
+                {/* 图片下方的提示词和操作区域 - 确保始终可见 */}
+                <div className="bg-gradient-to-br from-amber-900/20 to-amber-800/20 border border-amber-500/40 rounded-xl p-6 mt-4 backdrop-blur-sm">
+                  <div className="mb-4">
+                    <h3 className="text-amber-200 font-semibold mb-3 flex items-center">
+                      <Wand className="w-5 h-5 mr-2" />
+                      创作提示词
+                    </h3>
+                    <p className="text-amber-100 text-base leading-relaxed bg-black/20 rounded-lg p-4 border border-amber-500/20 min-h-[60px]">
+                      {selectedImage.prompt || '暂无提示词'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="text-sm text-amber-300/70">
+                      <span>风格: {STYLE_PRESETS.find(s => s.id === selectedImage.style)?.name || '无风格'}</span>
+                      <span className="mx-2">•</span>
+                      <span>{new Date(selectedImage.timestamp).toLocaleString()}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Button
+                        size="sm"
+                        onClick={() => copyToClipboard(selectedImage.prompt)}
+                        className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-200 border border-amber-500/30"
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        复制提示词
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        onClick={() => scrollToGeneratorWithPrompt(selectedImage.prompt)}
+                        className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg hover:shadow-amber-500/25"
+                      >
+                        <Wand className="w-4 h-4 mr-2" />
+                        制作
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        onClick={() => downloadImage(selectedImage.url)}
+                        className="bg-amber-600/20 hover:bg-amber-600/30 text-amber-200 border border-amber-500/30"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        下载
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1269,185 +1102,11 @@ export default function AtelierAI() {
         )}
       </AnimatePresence>
 
-      {/* 会员计划定价 */}
-      <section id="pricing" className="py-20 bg-gradient-to-b from-transparent to-zinc-900/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h2 className="renaissance-title text-4xl lg:text-5xl mb-6">
-              会员计划
-            </h2>
-            <p className="text-xl text-amber-200/80 max-w-3xl mx-auto leading-relaxed">
-              选择适合您的创作计划，释放无限艺术潜能
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* 免费计划 */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="atelier-card p-8 text-center"
-            >
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-amber-100 mb-2">探索版</h3>
-                <div className="text-4xl font-bold text-amber-400 mb-2">免费</div>
-                <p className="text-amber-200/70">体验AI艺术创作</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8 text-left">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">每日10次创作额度</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">基础艺术风格</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">标准画质输出</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">作品画廊保存</span>
-                </li>
-              </ul>
-              
-              <Button className="w-full bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30">
-                当前计划
-              </Button>
-            </motion.div>
-
-            {/* 专业计划 */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="atelier-card p-8 text-center relative border-2 border-amber-500/50"
-            >
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-black px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                  推荐
-                </span>
-              </div>
-              
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-amber-100 mb-2">艺术家版</h3>
-                <div className="text-4xl font-bold text-amber-400 mb-2">
-                  ¥29<span className="text-lg text-amber-200/70">/月</span>
-                </div>
-                <p className="text-amber-200/70">专业创作无限制</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8 text-left">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">无限创作次数</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">全部艺术风格</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">4K超高清输出</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">优先处理队列</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">高级图像编辑</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">商用授权</span>
-                </li>
-              </ul>
-              
-              <Button className="w-full maestro-button text-base py-4 font-bold hover:scale-105 transition-all duration-300">
-                升级至专业版
-              </Button>
-            </motion.div>
-
-            {/* 工作室计划 */}
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="atelier-card p-8 text-center"
-            >
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-amber-100 mb-2">工作室版</h3>
-                <div className="text-4xl font-bold text-amber-400 mb-2">
-                  ¥99<span className="text-lg text-amber-200/70">/月</span>
-                </div>
-                <p className="text-amber-200/70">团队协作创作</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8 text-left">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">艺术家版全部功能</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">5个团队成员</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">团队作品库</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">API接口调用</span>
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full mr-3"></div>
-                  <span className="text-amber-200/80">专属技术支持</span>
-                </li>
-              </ul>
-              
-              <Button className="w-full bg-purple-500/20 text-purple-200 border border-purple-500/30 hover:bg-purple-500/30">
-                联系销售
-              </Button>
-            </motion.div>
-          </div>
-
-          {/* 特色说明 */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="text-center mt-16"
-          >
-            <div className="flex flex-wrap justify-center gap-8 text-sm text-amber-200/70">
-              <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-amber-400" />
-                <span>7天无理由退款</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span>即时生效</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-amber-400" />
-                <span>随时取消订阅</span>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
       {/* Flux Kontext Dev 技术展示 */}
       <KontextShowcase />
+
+      {/* 会员计划定价 */}
+      <PricingSection />
 
       {/* 艺术工作室页脚 */}
       <footer className="bg-gradient-to-t from-zinc-900/50 to-transparent py-16 mt-20">

@@ -1,0 +1,40 @@
+{
+  "examples": [
+    {
+      "id": "object-replacement",
+      "title": "物体替换",
+      "description": "精确替换图像中的特定物体，保持其他元素不变",
+      "beforeImage": "/images/flux-examples/object-before.jpg",
+      "afterImage": "/images/flux-examples/object-after.jpg",
+      "prompt": "Replace the blue car with a red bicycle, keep everything else the same",
+      "category": "object"
+    },
+    {
+      "id": "style-transfer",
+      "title": "风格转换",
+      "description": "改变图像的艺术风格，同时保持主体和构图",
+      "beforeImage": "/images/flux-examples/style-before.jpg",
+      "afterImage": "/images/flux-examples/style-after.jpg",
+      "prompt": "Transform this portrait into a vintage oil painting style from the 1800s",
+      "category": "style"
+    },
+    {
+      "id": "character-edit",
+      "title": "角色编辑",
+      "description": "修改人物的服装、发型或表情",
+      "beforeImage": "/images/flux-examples/character-before.jpg",
+      "afterImage": "/images/flux-examples/character-after.jpg",
+      "prompt": "Change the person's outfit to a formal business suit and add glasses",
+      "category": "character"
+    },
+    {
+      "id": "background-change",
+      "title": "背景替换",
+      "description": "完全更换图像背景，保持主体不变",
+      "beforeImage": "/images/flux-examples/background-before.jpg",
+      "afterImage": "/images/flux-examples/background-after.jpg",
+      "prompt": "Replace the indoor background with a beautiful sunset beach scene",
+      "category": "background"
+    }
+  ]
+}
