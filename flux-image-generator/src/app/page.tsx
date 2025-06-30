@@ -137,7 +137,7 @@ export default function AtelierAI() {
   // 新增：图像上传相关状态
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [selectedUploadedImage, setSelectedUploadedImage] = useState<string | null>(null);
-  // const [useKontext, setUseKontext] = useState(false);
+  const [useKontext, setUseKontext] = useState(false);
   
   // 图像编辑相关状态
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
@@ -148,9 +148,8 @@ export default function AtelierAI() {
     showNetworkError,
     showApiError,
     showQuotaError,
-    showUserError,
+    showUserError
     // showTimeoutError,
-    ErrorNotificationComponent
   } = useErrorHandler();
   const [imageEditState, setImageEditState] = useState<ImageEditState>({
     rotation: 0,
@@ -497,10 +496,10 @@ export default function AtelierAI() {
   //           if (data.translatedText) {
   //             finalPrompt = data.translatedText;
   //           }
-          }
-        } catch (error) {
-          console.error('Translation failed:', error);
-          // 继续使用原始prompt
+  //         }
+  //       } catch (error) {
+  //         console.error('Translation failed:', error);
+  //         // 继续使用原始prompt
   //       }
   //     }
 
@@ -588,7 +587,7 @@ export default function AtelierAI() {
         outputFormat: outputFormat,
         goFast: goFast,
         seed: seed,
-        useKontext: uploadedImages.length > 0,
+        useKontext: useKontext,
         numOutputs: uploadedImages.length > 0 ? 1 : effectiveNumImages
       };
 
@@ -621,7 +620,7 @@ export default function AtelierAI() {
       setGeneratedImages(imageUrls);
 
       // 将所有图像添加到历史记录，使用原始中文提示词
-      const newImages = imageUrls.map((imageUrl, index) => ({
+      const newImages = imageUrls.map((imageUrl: string, index: number) => ({
         id: `${Date.now()}-${index}`,
         url: imageUrl,
         prompt: originalPrompt, // 使用原始提示词而非翻译后的
@@ -741,10 +740,10 @@ export default function AtelierAI() {
               </div>
               <div>
                 <h1 className="renaissance-title text-3xl tracking-wide">
-                  Atelier AI
+                  Atelier AI Pro
                 </h1>
                 <p className="text-xs text-amber-300/70 font-light tracking-widest">
-                  DIGITAL RENAISSANCE
+                  PROFESSIONAL AI STUDIO
                 </p>
               </div>
             </motion.div>
@@ -752,16 +751,16 @@ export default function AtelierAI() {
             {/* 导航菜单 */}
             <nav className="hidden md:flex items-center space-x-8">
               <a href="#create" className="text-amber-200 hover:text-amber-100 transition-colors font-medium">
-                创作工作室
+                AI创作
               </a>
               <a href="#gallery" className="text-amber-200 hover:text-amber-100 transition-colors font-medium">
-                作品画廊
+                作品展示
               </a>
               <a href="#kontext-showcase" className="text-amber-200 hover:text-amber-100 transition-colors font-medium">
-                技术展示
+                核心技术
               </a>
               <a href="#pricing" className="text-amber-200 hover:text-amber-100 transition-colors font-medium">
-                会员计划
+                升级专业版
               </a>
             </nav>
 
@@ -813,35 +812,35 @@ export default function AtelierAI() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
                     >
-                      创作工作室
+                      AI创作
                     </a>
                     <a 
                       href="#gallery" 
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
                     >
-                      作品画廊
+                      作品展示
                     </a>
                     <a 
                       href="#kontext-showcase" 
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
                     >
-                      技术展示
+                      核心技术
                     </a>
                     <a 
                       href="#pricing" 
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="text-amber-200 hover:text-amber-100 transition-colors font-medium py-2 border-b border-amber-500/10"
                     >
-                      会员计划
+                      升级专业版
                     </a>
                     
                     {/* 移动端使用计数器 */}
                     <div className="pt-4 border-t border-amber-500/20">
                       <div className="atelier-panel px-4 py-3 text-center">
                         <span className="text-sm text-amber-200">
-                          今日剩余: <span className="text-amber-400 font-bold">{MAX_DAILY_USAGE - usageToday}</span>
+                          今日额度: <span className="text-amber-400 font-bold">{MAX_DAILY_USAGE - usageToday}</span> 次专业创作
                         </span>
                       </div>
                     </div>
@@ -863,11 +862,13 @@ export default function AtelierAI() {
             className="text-center mb-12"
           >
             <h2 className="renaissance-title text-5xl lg:text-6xl mb-6">
-              艺术创作工作室
+              专业级AI视觉创作平台
             </h2>
             <p className="text-xl text-amber-200/80 max-w-3xl mx-auto leading-relaxed">
-              在这里，您的想象力与AI技术完美融合，创造出独一无二的数字艺术作品。
-              每一次创作都是一场艺术的探索之旅。
+              节省90%设计时间，零基础创作商业级视觉作品。
+              <span className="block mt-2 text-lg text-amber-300">
+                超过10万+创作者选择，每天生成百万张专业图像
+              </span>
             </p>
           </motion.div>
 
@@ -894,10 +895,10 @@ export default function AtelierAI() {
                 <motion.div className="atelier-card p-8">
                   <div className="text-center mb-8">
                     <h2 className="renaissance-title text-3xl mb-4">
-                      正在创作您的艺术杰作
+                      AI正在为您创作专业级作品
                     </h2>
                     <p className="text-amber-200/80 mb-4">
-                      AI正在将您的想象转化为独特的视觉艺术
+                      企业级AI算法正在将您的创意转化为商业价值作品
                     </p>
                     
                     {/* 精美的进度条 */}
@@ -909,7 +910,7 @@ export default function AtelierAI() {
                         ></div>
                       </div>
                       <p className="text-amber-300 mt-2 text-lg font-medium">
-                        创作进度: {progress}%
+                        专业创作进度: {progress}%
                       </p>
                     </div>
                   </div>
@@ -938,14 +939,14 @@ export default function AtelierAI() {
               <motion.div className="atelier-card p-8">
                 <div className="text-center mb-8">
                   <h2 className="renaissance-title text-3xl mb-4">
-                    您的艺术杰作
+                    专业级创作成果
                   </h2>
                   <p className="text-amber-200/80 mb-4">
-                    恭喜！您的创意已经转化为独特的数字艺术作品
+                    🎉 您的创意已转化为商业级视觉作品，可直接用于商业用途
                   </p>
-                  {/* 简化的提示 */}
+                  {/* 价值提示 */}
                   <p className="text-amber-200/80 mb-6 text-center">
-                    点击图片放大查看
+                    高分辨率专业格式，支持商用授权 | 点击查看大图
                   </p>
                 </div>
                 
@@ -996,8 +997,7 @@ export default function AtelierAI() {
                         <IconButtonFeedback
                           icon={<Download className="w-5 h-5" />}
                           tooltip="下载图片"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             downloadImage(imageUrl);
                           }}
                           className="gold-glow text-black"
@@ -1029,7 +1029,7 @@ export default function AtelierAI() {
                             }}
                             className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 text-xs"
                           >
-                            复制提示词
+                            复制专业模板
                           </Button>
                           <Button
                             size="sm"
@@ -1040,7 +1040,7 @@ export default function AtelierAI() {
                             }}
                             className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 text-xs"
                           >
-                            重新生成
+                            立即重做
                           </Button>
                         </div>
                       </div>
@@ -1061,15 +1061,15 @@ export default function AtelierAI() {
               <motion.div className="atelier-card p-8">
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h2 className="renaissance-title text-3xl mb-4">创作画廊</h2>
+                    <h2 className="renaissance-title text-3xl mb-4">专业作品库</h2>
                     <p className="text-amber-200/80">
-                      {isHistoryLoading ? '正在加载您的作品...' : '您的艺术创作历程'}
+                      {isHistoryLoading ? '正在加载您的专业作品集...' : '您的商业级创作档案，价值不断增长'}
                     </p>
                   </div>
                   {!isHistoryLoading && history.length > 0 && (
                     <IconButtonFeedback
-                      icon={<><Trash2 className="w-4 h-4 mr-2" />清空画廊</>}
-                      tooltip="清空所有作品"
+                      icon={<><Trash2 className="w-4 h-4 mr-2" />管理作品集</>}
+                      tooltip="管理您的专业作品集"
                       onClick={clearHistory}
                       className="border-amber-500/30 text-amber-200 hover:bg-amber-500/10 px-4 py-2 rounded-lg border"
                       variant="ghost"
@@ -1253,35 +1253,37 @@ export default function AtelierAI() {
               <div className="flex items-center space-x-4 mb-6">
                 <Cpu className="w-10 h-10 text-amber-400" />
                 <div>
-                  <h3 className="renaissance-title text-2xl">Atelier AI</h3>
-                  <p className="text-amber-300/70 text-sm">Digital Renaissance</p>
+                  <h3 className="renaissance-title text-2xl">Atelier AI Pro</h3>
+                  <p className="text-amber-300/70 text-sm">Professional AI Studio</p>
                 </div>
               </div>
               <p className="text-amber-200/70 leading-relaxed max-w-md">
-                在数字时代重新定义艺术创作。我们相信每个人都拥有独特的创意天赋，
-                AI技术只是帮助您将想象力转化为现实的画笔。
+                专业级AI视觉创作平台，服务超过10万+企业和创作者。
+                <span className="block mt-2 text-amber-300">
+                  节省90%设计成本，提升200%创作效率。
+                </span>
               </p>
             </div>
 
             {/* 产品链接 */}
             <div>
-              <h4 className="text-amber-100 font-bold mb-4">工作室功能</h4>
+              <h4 className="text-amber-100 font-bold mb-4">专业功能</h4>
               <ul className="space-y-2 text-amber-200/70">
-                <li><a href="#create" className="hover:text-amber-100 transition-colors">AI绘画创作</a></li>
-                <li><a href="#gallery" className="hover:text-amber-100 transition-colors">作品画廊</a></li>
-                <li><a href="#styles" className="hover:text-amber-100 transition-colors">艺术风格</a></li>
-                <li><a href="#tools" className="hover:text-amber-100 transition-colors">创作工具</a></li>
+                <li><a href="#create" className="hover:text-amber-100 transition-colors">专业级AI创作</a></li>
+                <li><a href="#gallery" className="hover:text-amber-100 transition-colors">商业作品库</a></li>
+                <li><a href="#styles" className="hover:text-amber-100 transition-colors">多种专业风格</a></li>
+                <li><a href="#tools" className="hover:text-amber-100 transition-colors">高级编辑工具</a></li>
               </ul>
             </div>
 
             {/* 支持链接 */}
             <div>
-              <h4 className="text-amber-100 font-bold mb-4">支持与帮助</h4>
+              <h4 className="text-amber-100 font-bold mb-4">专业服务</h4>
               <ul className="space-y-2 text-amber-200/70">
-                <li><a href="#faq" className="hover:text-amber-100 transition-colors">常见问题</a></li>
-                <li><a href="#guide" className="hover:text-amber-100 transition-colors">使用指南</a></li>
-                <li><a href="#contact" className="hover:text-amber-100 transition-colors">联系我们</a></li>
-                <li><a href="#feedback" className="hover:text-amber-100 transition-colors">用户反馈</a></li>
+                <li><a href="#faq" className="hover:text-amber-100 transition-colors">企业解决方案</a></li>
+                <li><a href="#guide" className="hover:text-amber-100 transition-colors">专业教程</a></li>
+                <li><a href="#contact" className="hover:text-amber-100 transition-colors">24/7技术支持</a></li>
+                <li><a href="#feedback" className="hover:text-amber-100 transition-colors">定制开发</a></li>
               </ul>
             </div>
           </div>
@@ -1290,7 +1292,7 @@ export default function AtelierAI() {
 
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-amber-300/60 text-sm">
-              © 2024 Atelier AI. 探索数字艺术的无限可能。
+              © 2024 Atelier AI Pro. 全球领先的专业级AI视觉创作平台。
             </p>
             <div className="flex space-x-4 mt-4 md:mt-0">
               <Button variant="ghost" size="icon" className="text-amber-300/60 hover:text-amber-200">

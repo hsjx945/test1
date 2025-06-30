@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { X, AlertTriangle, Wifi, Clock, Settings, Lightbulb } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export interface ErrorInfo {
   id: string;
@@ -59,7 +59,7 @@ const ErrorNotification = ({ errors, onRemoveError }: ErrorNotificationProps) =>
     }
   };
 
-  const handleDismiss = (errorId: string) => {
+  const handleDismiss = useCallback((errorId: string) => {
     setDismissedErrors(prev => new Set([...prev, errorId]));
     setTimeout(() => {
       onRemoveError(errorId);
@@ -69,7 +69,7 @@ const ErrorNotification = ({ errors, onRemoveError }: ErrorNotificationProps) =>
         return newSet;
       });
     }, 300);
-  };
+  }, [onRemoveError]);
 
   // 自动关闭错误
   useEffect(() => {
@@ -81,7 +81,7 @@ const ErrorNotification = ({ errors, onRemoveError }: ErrorNotificationProps) =>
         return () => clearTimeout(timer);
       }
     });
-  }, [errors]);
+  }, [errors, handleDismiss]);
 
   const visibleErrors = errors.filter(error => !dismissedErrors.has(error.id));
 

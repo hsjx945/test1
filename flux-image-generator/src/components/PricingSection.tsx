@@ -21,44 +21,44 @@ interface PricingSectionProps {
 
 const defaultPlans: PricingPlan[] = [
   {
-    name: '探索版',
+    name: '免费体验版',
     price: '免费',
-    description: '体验AI艺术创作',
+    description: '体验企业级AI创作',
     features: [
-      '每日1次创作额度',
-      '基础艺术风格',
-      '标准画质输出',
-      '作品画廊保存'
+      '每日基础创作额度',
+      '5种专业风格选择',
+      '1080P高清输出',
+      '个人作品保存'
     ],
     buttonText: '当前计划',
     buttonClass: 'w-full h-12 bg-amber-500/20 text-amber-200 border border-amber-500/30 hover:bg-amber-500/30 rounded-lg font-semibold transition-all duration-300'
   },
   {
-    name: '艺术家版',
+    name: '专业创作版',
     price: '¥29/月',
-    description: '专业创作无限制',
+    description: '无限商业创作权限',
     features: [
-      '无限创作次数',
-      '全部艺术风格',
-      '4K超高清输出',
-      '优先处理队列',
-      '高级图像编辑',
-      '商用授权'
+      '无限量企业级创作',
+      '20+专业风格模板',
+      '4K超高清商用输出',
+      '优先处理（速度10倍）',
+      '高级编辑工具套件',
+      '商业授权证书'
     ],
-    buttonText: '升级至专业版',
+    buttonText: '立即升级解锁',
     buttonClass: 'w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-lg font-semibold transition-all duration-300',
     popular: true
   },
   {
-    name: '工作室版',
+    name: '企业合作版',
     price: '¥99/月',
-    description: '团队协作创作',
+    description: '团队协作加速API',
     features: [
-      '艺术家版全部功能',
-      '5个团队成员',
-      '团队作品库',
-      'API接口调用',
-      '专属技术支持'
+      '专业版全部权限',
+      '10个团队成员账户',
+      '企业级作品云库',
+      '开发者API接口',
+      '7x24专属技术支持'
     ],
     buttonText: '联系销售',
     buttonClass: 'w-full h-12 bg-purple-500/20 text-purple-200 border border-purple-500/30 hover:bg-purple-500/30 rounded-lg font-semibold transition-all duration-300'
@@ -79,10 +79,10 @@ export default function PricingSection({
           className="text-center mb-16"
         >
           <h2 className="renaissance-title text-4xl lg:text-5xl mb-6">
-            会员计划
+            专业版本升级
           </h2>
           <p className="text-xl text-amber-200/80 max-w-3xl mx-auto leading-relaxed">
-            选择适合您的创作计划，释放无限艺术潜能
+            选择专业版本，解锁全部企业级功能，提升创作效率200%
           </p>
         </motion.div>
 

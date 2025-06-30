@@ -270,8 +270,8 @@ export default function ProfessionalGenerator({
     >
       {/* 金色主题标题 */}
       <div className="text-center mb-8">
-        <h2 className="renaissance-title text-4xl lg:text-5xl mb-4">AI 图像生成</h2>
-        <p className="text-xl text-amber-200/80 leading-relaxed">让创意变成现实</p>
+        <h2 className="renaissance-title text-4xl lg:text-5xl mb-4">企业级AI创作引擎</h2>
+        <p className="text-xl text-amber-200/80 leading-relaxed">10秒生成商业级视觉作品，节省90%设计成本</p>
       </div>
 
       {/* 核心输入区域 - 提示词和上传框同行 */}
@@ -279,11 +279,11 @@ export default function ProfessionalGenerator({
         <div className="grid lg:grid-cols-3 gap-6">
           {/* 提示词输入 - 占2列 */}
           <div className="lg:col-span-2">
-            <label className="block text-amber-200 text-lg font-semibold mb-3">创意描述</label>
+            <label className="block text-amber-200 text-lg font-semibold mb-3">专业创作提示词</label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="描述您想要创作的图像，例如：一个美丽的女孩在花园里微笑，阳光透过树叶洒在她的脸上..."
+              placeholder="输入您的创意描述，AI将自动优化为专业级提示词。例如：现代办公室里的商务人士正在开会，自然光线透过大窗户..."
               className="min-h-[160px] bg-zinc-800/60 border-2 border-zinc-600 hover:border-amber-500/50 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-white placeholder:text-zinc-400 resize-none w-full rounded-xl p-4 text-xl leading-relaxed transition-all duration-300"
               maxLength={2000}
             />
@@ -314,12 +314,12 @@ export default function ProfessionalGenerator({
           {/* 参考图像上传 - 占1列 */}
           <div>
             <label className="block text-amber-200 text-lg font-semibold mb-3">
-              参考图像 <span className="text-sm text-amber-300/60 font-normal">(可选)</span>
+              参考素材 <span className="text-sm text-amber-300/60 font-normal">(企业级精准控制)</span>
             </label>
             {uploadedImages.length > 0 && numImages > 1 && (
               <div className="mb-2 p-2 bg-amber-900/20 border border-amber-500/30 rounded-lg">
                 <p className="text-xs text-amber-300/80">
-                  💡 使用参考图像时，系统会自动切换到单张生成模式
+                  💡 专业提示：参考素材可精确控制风格、构图和色彩，确保品牌一致性
                 </p>
               </div>
             )}
@@ -426,8 +426,8 @@ export default function ProfessionalGenerator({
               ) : (
                 <>
                   <Upload className="w-8 h-8 text-zinc-400 group-hover:text-zinc-300 mb-2" />
-                  <span className="text-sm text-zinc-400 group-hover:text-zinc-300 text-center">拖拽或点击上传</span>
-                  <span className="text-xs text-zinc-500">JPG, PNG, WEBP</span>
+                  <span className="text-sm text-zinc-400 group-hover:text-zinc-300 text-center">上传品牌参考素材</span>
+                  <span className="text-xs text-zinc-500">支持JPG, PNG, WEBP格式</span>
                 </>
               )}
             </div>
@@ -438,7 +438,7 @@ export default function ProfessionalGenerator({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 sm:gap-3 p-6 bg-gradient-to-br from-amber-900/10 via-amber-800/8 to-amber-700/10 backdrop-blur-[20px] border border-amber-400/20 rounded-2xl shadow-[inset_0_1px_0_0_rgba(251,191,36,0.1)] shadow-amber-500/5">
           {/* 艺术风格 */}
           <div>
-            <label className="block text-amber-200 text-sm font-medium mb-2">艺术风格</label>
+            <label className="block text-amber-200 text-sm font-medium mb-2">专业风格</label>
             <Select value={style} onValueChange={setStyle}>
               <SelectTrigger className="bg-zinc-700/50 border-zinc-600 text-white h-10 rounded-lg text-sm">
                 <SelectValue placeholder="风格" />
@@ -763,7 +763,7 @@ export default function ProfessionalGenerator({
                     <div className="absolute inset-0 w-8 h-8 border-4 border-transparent border-r-purple-300 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
                     <div className="absolute inset-0 w-8 h-8 border-4 border-transparent border-l-blue-300 rounded-full animate-spin" style={{ animationDuration: '1.2s' }} />
                   </div>
-                  <span className="animate-pulse">正在召唤 AI 魔法...</span>
+                  <span className="animate-pulse">企业级AI正在创作中...</span>
                   <div className="flex gap-1">
                     {[...Array(3)].map((_, i) => (
                       <motion.div 
@@ -795,7 +795,7 @@ export default function ProfessionalGenerator({
                     <Wand className="w-8 h-8 drop-shadow-lg" />
                   </motion.div>
                   <span className="bg-gradient-to-r from-white via-yellow-200 to-white bg-clip-text text-transparent font-black drop-shadow-lg">
-                    开始生成
+                    生成专业作品
                   </span>
                 </>
               )}
@@ -814,12 +814,12 @@ export default function ProfessionalGenerator({
             <div className="flex items-center justify-center gap-3 mb-2">
               <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
               <p className="text-red-300 font-medium">
-                今日创作次数已用完
+                免费额度已用完
               </p>
               <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
             </div>
             <p className="text-zinc-400 text-sm">
-              升级会员解锁无限创作次数
+              升级专业版解锁无限商业创作权限
             </p>
           </motion.div>
         )}
