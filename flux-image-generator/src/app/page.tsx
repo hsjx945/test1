@@ -1006,8 +1006,7 @@ export default function AtelierAI() {
                         <IconButtonFeedback
                           icon={<Copy className="w-5 h-5" />}
                           tooltip="复制图片"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          onClick={() => {
                             copyToClipboard(imageUrl);
                           }}
                           className="gold-glow text-black"
@@ -1123,7 +1122,7 @@ export default function AtelierAI() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                copyToClipboard(item.prompt, '提示词已复制到剪贴板');
+                                copyToClipboard(item.prompt);
                               }}
                               className="text-amber-400 hover:text-amber-300 transition-colors"
                               title="复制提示词"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 
@@ -23,51 +23,87 @@ export default function BeforeAfterSlider({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = useCallback(() => {
-    setIsDragging(true);
+  // 获取鼠标或触摸位置的百分比
+  const getPercentage = useCallback((clientX: number) => {
+    if (!containerRef.current) return 50;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    return percentage;
   }, []);
 
-  const handleMouseUp = useCallback(() => {
+  // 处理拖拽移动
+  const handleMove = useCallback((clientX: number) => {
+    if (!isDragging) return;
+    setSliderPosition(getPercentage(clientX));
+  }, [isDragging, getPercentage]);
+
+  // 处理拖拽结束
+  const handleEnd = useCallback(() => {
     setIsDragging(false);
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
+  // 鼠标事件
+  const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    setIsDragging(true);
+    setSliderPosition(getPercentage(e.clientX));
+  };
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    
-    // 使用 requestAnimationFrame 确保流畅更新
-    requestAnimationFrame(() => {
-      setSliderPosition(percentage);
-    });
-  }, [isDragging]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging || !containerRef.current) return;
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     e.preventDefault();
+    handleMove(e.clientX);
+  }, [handleMove]);
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = e.touches[0].clientX - rect.left;
-    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    
-    // 使用 requestAnimationFrame 确保流畅更新
-    requestAnimationFrame(() => {
-      setSliderPosition(percentage);
-    });
-  }, [isDragging]);
+  const handleMouseUp = useCallback(() => {
+    handleEnd();
+  }, [handleEnd]);
+
+  // 触摸事件
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setSliderPosition(getPercentage(e.touches[0].clientX));
+  };
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    e.preventDefault();
+    if (e.touches.length > 0) {
+      handleMove(e.touches[0].clientX);
+    }
+  }, [handleMove]);
+
+  const handleTouchEnd = useCallback(() => {
+    handleEnd();
+  }, [handleEnd]);
+
+  // 全局事件监听
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
   return (
     <div 
       className={`relative overflow-hidden rounded-2xl border border-amber-500/30 shadow-2xl ${className}`}
       ref={containerRef}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleMouseUp}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      style={{
+        '--slider-pos': `${sliderPosition}%`
+      } as React.CSSProperties}
     >
       {/* Before Image (Background) */}
       <div className="relative aspect-[4/3] w-full">
@@ -95,35 +131,43 @@ export default function BeforeAfterSlider({
           />
         </div>
 
-        {/* Slider Line - 精确居中定位 */}
+        {/* 分隔线 - 使用CSS变量，保持简单 */}
         <div 
-          className="absolute top-0 bottom-0 w-1 bg-white shadow-lg cursor-ew-resize z-10"
+          className="absolute top-0 bottom-0 w-1 bg-white z-10 cursor-ew-resize"
           style={{ 
-            left: `${sliderPosition}%`,
+            left: 'var(--slider-pos)',
             transform: 'translateX(-50%)',
-            willChange: 'transform'
+            filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.9))'
           }}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleMouseDown}
+        />
+
+        {/* 手柄 - 确保transform永远不被覆盖 */}
+        <motion.div 
+          className="absolute w-8 h-8 bg-white rounded-full shadow-xl border-2 border-gray-300 z-20 cursor-ew-resize flex items-center justify-center"
+          style={{
+            top: '50%',
+            left: 'var(--slider-pos)',
+            transform: 'translate(-50%, -50%)'
+          }}
+          whileHover={{ 
+            transform: 'translate(-50%, -50%) scale(1.1)' // 保持translate，只添加scale
+          }}
+          whileTap={{ 
+            transform: 'translate(-50%, -50%) scale(0.95)' 
+          }}
+          animate={{ 
+            transform: isDragging 
+              ? 'translate(-50%, -50%) scale(1.1)' 
+              : 'translate(-50%, -50%) scale(1)'
+          }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
         >
-          {/* Slider Handle - 完美居中 */}
-          <motion.div 
-            className="absolute w-6 h-6 bg-white rounded-full shadow-lg cursor-ew-resize border border-gray-300"
-            style={{
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              willChange: 'transform'
-            }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-0.5 h-3 bg-gray-400 rounded-full mx-px"></div>
-              <div className="w-0.5 h-3 bg-gray-400 rounded-full mx-px"></div>
-            </div>
-          </motion.div>
-        </div>
+          {/* 手柄内部指示器 */}
+          <div className="flex items-center gap-0.5">
+            <div className="w-0.5 h-4 bg-gray-500 rounded-full"></div>
+            <div className="w-0.5 h-4 bg-gray-500 rounded-full"></div>
+          </div>
+        </motion.div>
 
         {/* Labels */}
         <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">

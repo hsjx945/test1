@@ -12,6 +12,7 @@ interface ButtonFeedbackProps {
   variant?: 'default' | 'secondary' | 'ghost' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   className?: string;
+  title?: string;
   hapticFeedback?: boolean;
   soundFeedback?: boolean;
 }
@@ -24,6 +25,7 @@ const ButtonFeedback = ({
   variant = 'default',
   size = 'default',
   className = '',
+  title,
   hapticFeedback = true,
   soundFeedback = false
 }: ButtonFeedbackProps) => {
@@ -114,6 +116,7 @@ const ButtonFeedback = ({
         disabled={disabled || loading}
         variant="ghost"
         size={size}
+        title={title}
         className={`
           ${getVariantClasses()}
           ${isPressed ? 'brightness-110 scale-95' : ''}
